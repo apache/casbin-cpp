@@ -57,6 +57,38 @@ namespace {
         std::string intermediate = ReplacePattern(value, "{", "\\{");
         return ReplacePattern(intermediate, "}", "\\}");
     }
+
+
+    // TryKeyMatchFastPath attempts to quickly determine if key1 matches key2 using simple rules.
+    // Returns true if the fast path was applicable, false otherwise. The result of the match is stored in 'result'.
+    // This speeds up the matching process (KeyMatch2, KeyMatch3) by avoiding full regex evaluation when possible.
+    bool TryKeyMatchFastPath(const std::string& key1, const std::string& key2, const char* placeholder_delimiters,
+                            bool& result) {
+        const auto wildcard_position = key2.find("/*");
+        const bool has_wildcard = key2.find('*') != std::string::npos;
+        const bool has_regex_metacharacter = key2.find_first_of(".^$|()[]+?\\") != std::string::npos;
+        const bool has_placeholder_delimiter = key2.find_first_of(placeholder_delimiters) != std::string::npos;
+
+        // Patterns with regex syntax or placeholders need the regular-expression path.
+        if (has_regex_metacharacter || has_placeholder_delimiter)
+            return false;
+
+        // Without a wildcard, matching is a direct equality check.
+        if (!has_wildcard) {
+            result = key1 == key2;
+            return true;
+        }
+
+        // A single trailing /* can be matched by checking the prefix.
+        if (wildcard_position != std::string::npos && wildcard_position + 2 == key2.size() &&
+            key2.find('*') == wildcard_position + 1 && key2.find('*', wildcard_position + 2) == std::string::npos) {
+            const auto prefix_length = wildcard_position + 1;
+            result = key1.size() >= prefix_length && key1.compare(0, prefix_length, key2, 0, prefix_length) == 0;
+            return true;
+        }
+
+        return false;
+    }
 }
 
 // KeyMatch determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.
@@ -92,6 +124,10 @@ std::string KeyGet(const std::string& key1, const std::string& key2) {
 // KeyMatch2 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.
 // For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/:resource"
 bool KeyMatch2(const std::string& key1, const std::string& key2) {
+    bool result;
+    if (TryKeyMatchFastPath(key1, key2, "{}:", result))
+        return result;
+    
     std::string k2 = PrepareWildCardMatching(key2);
     k2 = std::regex_replace(k2, capturingColonNonSlashRegex, "$1[^/]+$2");
     k2 = EscapeCurlyBraces(k2);
@@ -133,6 +169,10 @@ std::string KeyGet2(const std::string& key1, const std::string& key2, const std:
 // KeyMatch3 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.
 // For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/{resource}"
 bool KeyMatch3(const std::string& key1, const std::string& key2) {
+    bool result;
+    if (TryKeyMatchFastPath(key1, key2, "{}", result))
+        return result;
+
     std::string k2 = PrepareWildCardMatching(key2);
     k2 = std::regex_replace(k2, enclosedPlaceHolderRegex, "$1[^/]+$2");
     k2 = EscapeCurlyBraces(k2);
