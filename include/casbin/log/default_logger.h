@@ -12,14 +12,14 @@ public:
     bool IsEnabled() { return m_enable; }
 
     template <typename... Object>
-    void Print(Object... objects) {
+    void Print(Object const&... objects) {
         if (m_enable) {
             Print(objects...);
         }
     }
 
     template <typename... Object>
-    void Print(std::string format, Object... objects) {
+    void Print(std::string const& format, Object const&... objects) {
         if (m_enable) {
             Printf(format, objects...);
         }
