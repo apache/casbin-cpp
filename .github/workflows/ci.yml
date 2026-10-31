@@ -82,7 +82,7 @@ jobs:
         id: test-lib
         run: |
           cd build
-          ctest -j10 -C Release -T test --output-on-failure
+          ctest -j10 -C Debug -T test --output-on-failure
 
   macos:
     name: "macOS Latest (AppleClang 12.0)"
