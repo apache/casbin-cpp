@@ -24,6 +24,9 @@
 
 namespace casbin {
 
+// SplitPolicyLine splits a CSV policy line into fields, unquoting double-quoted fields.
+std::vector<std::string> SplitPolicyLine(const std::string& line);
+
 // LoadPolicyLine loads a text line as a policy rule to model.
 void LoadPolicyLine(const std::string& line, const std::shared_ptr<Model>& model);
 

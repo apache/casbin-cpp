@@ -16,7 +16,7 @@ bool FilteredFileAdapter ::filterLine(std::string line, Filter* filter) {
     if (filter == NULL)
         return false;
 
-    std::vector<std::string> p = Split(line, ",");
+    std::vector<std::string> p = SplitPolicyLine(line);
     if (p.size() == 0)
         return true;
 
@@ -34,7 +34,7 @@ bool FilteredFileAdapter ::filterWords(std::vector<std::string> line, std::vecto
     if (line.size() < filter.size() + 1)
         return true;
 
-    bool skip_line;
+    bool skip_line = false;
     for (int i = 0; i < filter.size(); i++) {
         if (filter[i].length() > 0 && Trim(filter[i]) != Trim(line[i + 1])) {
             skip_line = true;

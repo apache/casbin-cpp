@@ -17,6 +17,7 @@
  */
 
 #include <casbin/casbin.h>
+#include <casbin/persist/string_adapter.h>
 #include <gtest/gtest.h>
 
 #include "config_path.h"
@@ -112,6 +113,17 @@ TEST(TestEnforcer, TestThreeParams) {
     ASSERT_EQ(e.Enforce({"bob", "data1", "write"}), false);
     ASSERT_EQ(e.Enforce({"bob", "data2", "read"}), false);
     ASSERT_EQ(e.Enforce({"bob", "data2", "write"}), true);
+}
+
+TEST(TestEnforcer, TestQuotedPolicy) {
+    auto adapter = std::make_shared<casbin::StringAdapter>("p, admin, /, GET\np,    \"admin\",  /,  POST\n\"p\", \"admin\", \"/a,b\", PUT\np, \"say \"\"hi\"\"\", /, GET");
+    casbin::Enforcer e(basic_model_path, adapter);
+
+    ASSERT_EQ(e.Enforce({"admin", "/", "GET"}), true);
+    ASSERT_EQ(e.Enforce({"admin", "/", "POST"}), true);
+    ASSERT_EQ(e.Enforce({"admin", "/a,b", "PUT"}), true);
+    ASSERT_EQ(e.Enforce({"say \"hi\"", "/", "GET"}), true);
+    ASSERT_EQ(e.Enforce({"\"admin\"", "/", "POST"}), false);
 }
 
 TEST(TestEnforcer, TestVectorParams) {

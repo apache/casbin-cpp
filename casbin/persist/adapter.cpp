@@ -16,6 +16,8 @@
 
 #include "casbin/pch.h"
 
+#include <cctype>
+
 #ifndef ADAPTER_CPP
 #define ADAPTER_CPP
 
@@ -24,14 +26,42 @@
 
 namespace casbin {
 
+// SplitPolicyLine splits a CSV policy line into fields. Unquoted fields are trimmed, a field wrapped in double quotes
+// may contain commas and keeps its inner whitespace, and "" inside it stands for one double quote.
+std::vector<std::string> SplitPolicyLine(const std::string& line) {
+    std::vector<std::string> tokens;
+    std::string token;
+    bool in_quotes = false;
+    bool quoted = false;
+    for (size_t i = 0; i < line.size(); i++) {
+        char c = line[i];
+        if (in_quotes) {
+            if (c != '"')
+                token += c;
+            else if (i + 1 < line.size() && line[i + 1] == '"')
+                token += line[++i];
+            else
+                in_quotes = false;
+        } else if (c == ',') {
+            tokens.push_back(quoted ? token : Trim(token));
+            token.clear();
+            quoted = false;
+        } else if (c == '"' && !quoted && Trim(token).empty()) {
+            in_quotes = quoted = true;
+        } else if (!quoted || !std::isspace(static_cast<unsigned char>(c))) {
+            token += c;
+        }
+    }
+    tokens.push_back(quoted ? token : Trim(token));
+    return tokens;
+}
+
 // LoadPolicyLine loads a text line as a policy rule to model.
 void LoadPolicyLine(const std::string& line, const std::shared_ptr<Model>& model) {
     if (line.empty() || line.find('#') == 0)
         return;
 
-    std::vector<std::string> tokens = Split(line, ",", -1);
-    for (int i = 0; i < tokens.size(); i++)
-        tokens[i] = Trim(tokens[i]);
+    std::vector<std::string> tokens = SplitPolicyLine(line);
 
     std::string key = tokens[0];
     std::string sec = key.substr(0, 1);
