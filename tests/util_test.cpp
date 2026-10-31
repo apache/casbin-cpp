@@ -40,6 +40,11 @@ TEST(TestUtil, TestEscapeAssertion) {
     TestEscapeAssertionFn("g(r.sub, p.sub) == p.attr", "g(r_sub, p_sub) == p_attr");
     TestEscapeAssertionFn("g(r.sub,p.sub) == p.attr", "g(r_sub,p_sub) == p_attr");
     TestEscapeAssertionFn("(r.attp.value || p.attr)p.u", "(r_attp.value || p_attr)p_u");
+    TestEscapeAssertionFn("r.sub == \"r.my_resource\"", "r_sub == \"r.my_resource\"");
+    TestEscapeAssertionFn("p.obj == 'p.resource'", "p_obj == 'p.resource'");
+    TestEscapeAssertionFn("p.sub == p.obj && p.obj == \"r.something\"", "p_sub == p_obj && p_obj == \"r.something\"");
+    TestEscapeAssertionFn("r.sub == \"hello p.world\" && r2.obj == p2.obj", "r_sub == \"hello p.world\" && r2_obj == p2_obj");
+    TestEscapeAssertionFn("r.sub == \"a.p.p.l.e\"", "r_sub == \"a.p.p.l.e\"");
 }
 
 void TestRemoveCommentsFn(const std::string& s, const std::string& res) {
