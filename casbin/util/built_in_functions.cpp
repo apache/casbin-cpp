@@ -21,6 +21,7 @@
 
 #include <map>
 #include <regex>
+#include <unordered_map>
 
 #include "casbin/exception/illegal_argument_exception.h"
 #include "casbin/ip_parser/parser/CIDR.h"
@@ -57,6 +58,40 @@ namespace {
         std::string intermediate = ReplacePattern(value, "{", "\\{");
         return ReplacePattern(intermediate, "}", "\\}");
     }
+
+    static const char regexSpecialChars[] = "\\^$.|?*+()[]{}";
+    static const char regexSpecialCharsAndColon[] = "\\^$.|?*+()[]{}:";
+
+    // MatchWithoutRegex matches key1 against key2 without a regex when key2 is a plain path, optionally ending with "/*".
+    // It returns false when key2 contains other special characters, then the caller has to fall back to the regex.
+    bool MatchWithoutRegex(const std::string& key1, const std::string& key2, const char* special_chars, bool& res) {
+        std::size_t pos = key2.find_first_of(special_chars);
+        if (pos == std::string::npos) {
+            res = key1 == key2;
+            return true;
+        }
+
+        if (pos > 0 && pos + 1 == key2.size() && key2[pos] == '*' && key2[pos - 1] == '/') {
+            // Same as "/.*" in the regex: same prefix, and "." does not match line terminators.
+            res = key1.compare(0, pos, key2, 0, pos) == 0 && key1.find_first_of("\r\n", pos) == std::string::npos;
+            return true;
+        }
+
+        return false;
+    }
+
+    // GetRegex returns the compiled regex of pattern, each thread compiles a pattern only once.
+    const std::regex& GetRegex(const std::string& pattern) {
+        thread_local std::unordered_map<std::string, std::regex> cache;
+        auto it = cache.find(pattern);
+        if (it != cache.end())
+            return it->second;
+
+        if (cache.size() >= 1024)
+            cache.clear();
+
+        return cache.emplace(pattern, std::regex(pattern)).first->second;
+    }
 }
 
 // KeyMatch determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.
@@ -92,6 +127,10 @@ std::string KeyGet(const std::string& key1, const std::string& key2) {
 // KeyMatch2 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.
 // For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/:resource"
 bool KeyMatch2(const std::string& key1, const std::string& key2) {
+    bool res;
+    if (MatchWithoutRegex(key1, key2, regexSpecialCharsAndColon, res))
+        return res;
+
     std::string k2 = PrepareWildCardMatching(key2);
     k2 = std::regex_replace(k2, capturingColonNonSlashRegex, "$1[^/]+$2");
     k2 = EscapeCurlyBraces(k2);
@@ -121,7 +160,7 @@ std::string KeyGet2(const std::string& key1, const std::string& key2, const std:
     k2 = "^" + k2 + "$";
 
     std::smatch values;
-    std::regex_match(key1.begin(), key1.end(), values, std::regex(k2));
+    std::regex_match(key1.begin(), key1.end(), values, GetRegex(k2));
 
     for (int i = 0; i < keys.size(); i++)
         if (!path_var.compare(keys.at(i).substr(1)))
@@ -133,6 +172,10 @@ std::string KeyGet2(const std::string& key1, const std::string& key2, const std:
 // KeyMatch3 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.
 // For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/{resource}"
 bool KeyMatch3(const std::string& key1, const std::string& key2) {
+    bool res;
+    if (MatchWithoutRegex(key1, key2, regexSpecialChars, res))
+        return res;
+
     std::string k2 = PrepareWildCardMatching(key2);
     k2 = std::regex_replace(k2, enclosedPlaceHolderRegex, "$1[^/]+$2");
     k2 = EscapeCurlyBraces(k2);
@@ -159,7 +202,7 @@ std::string KeyGet3(const std::string& key1, const std::string& key2, const std:
     k2 = "^" + k2 + "$";
 
     std::smatch values;
-    std::regex_match(key1.begin(), key1.end(), values, std::regex(k2));
+    std::regex_match(key1.begin(), key1.end(), values, GetRegex(k2));
 
     for (int i = 0; i < keys.size(); i++)
         if (!path_var.compare(keys.at(i).substr(1, keys.at(i).length() - 2)))
@@ -174,6 +217,10 @@ std::string KeyGet3(const std::string& key1, const std::string& key2, const std:
 // "/parent/123/child/456" does not match "/parent/{id}/child/{id}"
 // But KeyMatch3 will match both.
 bool KeyMatch4(const std::string& key1, const std::string& key2) {
+    bool res;
+    if (MatchWithoutRegex(key1, key2, regexSpecialChars, res))
+        return res;
+
     std::string k2 = PrepareWildCardMatching(key2);
 
     std::vector<std::string> tokens;
@@ -185,7 +232,7 @@ bool KeyMatch4(const std::string& key1, const std::string& key2) {
     k2 = EscapeCurlyBraces(k2);
     k2 = "^" + k2 + "$";
     std::smatch matches;
-    std::regex_match(key1.begin(), key1.end(), matches, std::regex(k2));
+    std::regex_match(key1.begin(), key1.end(), matches, GetRegex(k2));
     if (matches.empty())
         return false;
     if (tokens.size() != matches.size() - 1)
@@ -213,8 +260,7 @@ bool KeyMatch5(const std::string& key1, const std::string& key2) {
 
 // RegexMatch determines whether key1 matches the pattern of key2 in regular expression.
 bool RegexMatch(const std::string& key1, const std::string& key2) {
-    std::regex regex_s(key2);
-    return std::regex_match(key1, regex_s);
+    return std::regex_match(key1, GetRegex(key2));
 }
 
 // IPMatch determines whether IP address ip1 matches the pattern of IP address ip2, ip2 can be an IP address or a CIDR pattern.

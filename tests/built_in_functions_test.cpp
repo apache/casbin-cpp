@@ -93,6 +93,9 @@ TEST(TestBuiltInFunctions, TestKeyMatch2) {
     TestKeyMatch2Fn("/foobar", "/foo", false);
     TestKeyMatch2Fn("/foobar", "/foo*", false); // different with KeyMatch.
     TestKeyMatch2Fn("/foobar", "/foo/*", false);
+    TestKeyMatch2Fn("/foo/", "/foo/*", true);
+    TestKeyMatch2Fn("/foo/bar\nbaz", "/foo/*", false);
+    TestKeyMatch2Fn("/foo.bar", "/foo.bar", true);
 
     TestKeyMatch2Fn("/", "/:resource", false);
     TestKeyMatch2Fn("/resource1", "/:resource", true);
@@ -186,6 +189,9 @@ TEST(TestBuiltInFunctions, TestKeyMatch3) {
     TestKeyMatch3Fn("/foobar", "/foo", false);
     TestKeyMatch3Fn("/foobar", "/foo*", false);
     TestKeyMatch3Fn("/foobar", "/foo/*", false);
+    TestKeyMatch3Fn("/foo/", "/foo/*", true);
+    TestKeyMatch3Fn("/foo/bar\nbaz", "/foo/*", false);
+    TestKeyMatch3Fn("/foo:bar", "/foo:bar", true);
 
     TestKeyMatch3Fn("/", "/{resource}", false);
     TestKeyMatch3Fn("/resource1", "/{resource}", true);
@@ -280,6 +286,10 @@ TEST(TestBuiltInFunctions, TestKeyMatch4) {
     TestKeyMatch4Fn("/parent/123/child/456", "/parent/{id}/child/{id}/book/{id}", false);
 
     TestKeyMatch4Fn("/parent/123/child/123", "/parent/{i/d}/child/{i/d}", false);
+
+    TestKeyMatch4Fn("/parent/123", "/parent/123", true);
+    TestKeyMatch4Fn("/parent/123", "/parent/*", true);
+    TestKeyMatch4Fn("/parent", "/parent/*", false);
 }
 
 void TestKeyMatch5Fn(std::string key1, std::string key2, bool res) {
