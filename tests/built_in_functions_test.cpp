@@ -282,6 +282,53 @@ TEST(TestBuiltInFunctions, TestKeyMatch4) {
     TestKeyMatch4Fn("/parent/123/child/123", "/parent/{i/d}/child/{i/d}", false);
 }
 
+void TestKeyMatch5Fn(std::string key1, std::string key2, bool res) {
+    auto evaluator = casbin::ExprtkEvaluator();
+    auto func = casbin::ExprtkFunctionFactory::GetExprtkFunction(casbin::ExprtkFunctionType::KeyMatch5, 2);
+    evaluator.AddFunction("keyMatch5", func);
+    evaluator.AddIdentifier("key1", key1);
+    evaluator.AddIdentifier("key2", key2);
+    evaluator.Eval("keyMatch5(key1, key2)");
+    bool my_res = evaluator.GetBoolean();
+    EXPECT_EQ(res, my_res);
+}
+
+TEST(TestBuiltInFunctions, TestKeyMatch5) {
+    TestKeyMatch5Fn("/parent/child?status=1&type=2", "/parent/child", true);
+    TestKeyMatch5Fn("/parent?status=1&type=2", "/parent/child", false);
+
+    TestKeyMatch5Fn("/parent/child/?status=1&type=2", "/parent/child/", true);
+    TestKeyMatch5Fn("/parent/child/?status=1&type=2", "/parent/child", false);
+    TestKeyMatch5Fn("/parent/child?status=1&type=2", "/parent/child/", false);
+
+    TestKeyMatch5Fn("/foo", "/foo", true);
+    TestKeyMatch5Fn("/foo", "/foo*", true);
+    TestKeyMatch5Fn("/foo", "/foo/*", false);
+    TestKeyMatch5Fn("/foo/bar", "/foo", false);
+    TestKeyMatch5Fn("/foo/bar", "/foo*", false);
+    TestKeyMatch5Fn("/foo/bar", "/foo/*", true);
+    TestKeyMatch5Fn("/foobar", "/foo", false);
+    TestKeyMatch5Fn("/foobar", "/foo*", false);
+    TestKeyMatch5Fn("/foobar", "/foo/*", false);
+
+    TestKeyMatch5Fn("/", "/{resource}", false);
+    TestKeyMatch5Fn("/resource1", "/{resource}", true);
+    TestKeyMatch5Fn("/myid", "/{id}/using/{resId}", false);
+    TestKeyMatch5Fn("/myid/using/myresid", "/{id}/using/{resId}", true);
+
+    TestKeyMatch5Fn("/proxy/myid", "/proxy/{id}/*", false);
+    TestKeyMatch5Fn("/proxy/myid/", "/proxy/{id}/*", true);
+    TestKeyMatch5Fn("/proxy/myid/res", "/proxy/{id}/*", true);
+    TestKeyMatch5Fn("/proxy/myid/res/res2", "/proxy/{id}/*", true);
+    TestKeyMatch5Fn("/proxy/myid/res/res2/res3", "/proxy/{id}/*", true);
+    TestKeyMatch5Fn("/proxy/", "/proxy/{id}/*", false);
+
+    TestKeyMatch5Fn("/proxy/myid?status=1&type=2", "/proxy/{id}/*", false);
+    TestKeyMatch5Fn("/proxy/myid/res?status=1&type=2", "/proxy/{id}/*", true);
+    TestKeyMatch5Fn("/proxy/myid/res/res2?status=1&type=2", "/proxy/{id}/*", true);
+    TestKeyMatch5Fn("/proxy/myid/res/res2/res3?status=1&type=2", "/proxy/{id}/*", true);
+}
+
 void TestRegexMatchFn(std::string key1, std::string key2, bool res) {
     auto evaluator = casbin::ExprtkEvaluator();
     auto func = casbin::ExprtkFunctionFactory::GetExprtkFunction(casbin::ExprtkFunctionType::RegexMatch, 2);

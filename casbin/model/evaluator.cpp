@@ -83,6 +83,7 @@ void ExprtkEvaluator::LoadFunctions() {
     AddFunction("keyMatch2", ExprtkFunctionFactory::GetExprtkFunction(ExprtkFunctionType::KeyMatch2, 2));
     AddFunction("keyMatch3", ExprtkFunctionFactory::GetExprtkFunction(ExprtkFunctionType::KeyMatch3, 2));
     AddFunction("keyMatch4", ExprtkFunctionFactory::GetExprtkFunction(ExprtkFunctionType::KeyMatch4, 2));
+    AddFunction("keyMatch5", ExprtkFunctionFactory::GetExprtkFunction(ExprtkFunctionType::KeyMatch5, 2));
     AddFunction("regexMatch", ExprtkFunctionFactory::GetExprtkFunction(ExprtkFunctionType::RegexMatch, 2));
     AddFunction("ipMatch", ExprtkFunctionFactory::GetExprtkFunction(ExprtkFunctionType::IpMatch, 2));
     AddFunction("keyGet", ExprtkFunctionFactory::GetExprtkFunction(ExprtkFunctionType::KeyGet, 2));

@@ -53,6 +53,11 @@ std::string KeyGet3(const std::string& key1, const std::string& key2, const std:
 // But KeyMatch3 will match both.
 bool KeyMatch4(const std::string& key1, const std::string& key2);
 
+// KeyMatch5 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.
+// The query string in key1 is ignored.
+// For example, "/foo/bar?status=1&type=2" matches "/foo/bar", "/parent/child1" matches "/parent/*" and "/parent/{id}"
+bool KeyMatch5(const std::string& key1, const std::string& key2);
+
 // RegexMatch determines whether key1 matches the pattern of key2 in regular expression.
 bool RegexMatch(const std::string& key1, const std::string& key2);
 

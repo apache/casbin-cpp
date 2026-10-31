@@ -234,6 +234,7 @@ enum class ExprtkFunctionType {
     KeyMatch2,
     KeyMatch3,
     KeyMatch4,
+    KeyMatch5,
     RegexMatch,
     IpMatch,
     KeyGet,
@@ -275,6 +276,9 @@ public:
                 break;
             case ExprtkFunctionType::KeyMatch4:
                 func = std::make_shared<ExprtkMatchFunction>(idenfier, KeyMatch4);
+                break;
+            case ExprtkFunctionType::KeyMatch5:
+                func = std::make_shared<ExprtkMatchFunction>(idenfier, KeyMatch5);
                 break;
             case ExprtkFunctionType::IpMatch:
                 func = std::make_shared<ExprtkMatchFunction>(idenfier, IPMatch);
