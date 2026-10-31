@@ -10,13 +10,13 @@ namespace casbin {
 
 // Print formats using the default formats for its operands and logs the message.
 template <typename T, typename... Object>
-void Logger::Print(T arg, Object... objects) {
+void Logger::Print(T const& arg, Object const&... objects) {
     return;
 }
 
 // Printf formats according to a format specifier and logs the message.
 template <typename... Object>
-void Logger::Printf(std::string format, Object... objects) {
+void Logger::Printf(std::string const& format, Object const&... objects) {
     Print(objects...);
 }
 

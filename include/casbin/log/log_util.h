@@ -18,13 +18,13 @@ public:
 
     // LogPrint prints the log.
     template <typename... Object>
-    static void LogPrint(Object... objects) {
+    static void LogPrint(Object const&... objects) {
         s_logger.Print(objects...);
     }
 
     // LogPrintf prints the log with the format.
     template <typename... Object>
-    static void LogPrintf(std::string format, Object... objects) {
+    static void LogPrintf(std::string const& format, Object const&... objects) {
         s_logger.Printf(format, objects...);
     }
 };

@@ -18,11 +18,11 @@ public:
 
     // Print formats using the default formats for its operands and logs the message.
     template <typename T, typename... Object>
-    void Print(T arg, Object... objects);
+    void Print(T const& arg, Object const&... objects);
 
     // Printf formats according to a format specifier and logs the message.
     template <typename... Object>
-    void Printf(std::string, Object... objects);
+    void Printf(std::string const& format, Object const&... objects);
 };
 
 } // namespace casbin
