@@ -22,7 +22,7 @@ on:
 
 jobs:
   linux:
-    name: "Ubuntu Latest (GNU 9.3.0)"
+    name: "Ubuntu Latest (GCC)"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

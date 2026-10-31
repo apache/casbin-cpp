@@ -22,7 +22,7 @@ on:
 
 jobs:
   linux:
-    name: "Ubuntu Latest (GNU 9.3.0)"
+    name: "Ubuntu Latest (GCC)"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -53,7 +53,7 @@ jobs:
           rm -r build
 
   windows:
-    name: "Windows Latest (MSVC 19.29)"
+    name: "Windows Latest (MSVC)"
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -65,8 +65,6 @@ jobs:
           python-version: '3.x'
       - name: Setup CMake
         run: pip install "cmake==4.4.*"
-      - name: Set up MSVC environment
-        uses: ilammy/msvc-dev-cmd@v1
       - name: Configuring CMake files
         id: building-files
         run: |
@@ -85,7 +83,7 @@ jobs:
           ctest -j10 -C Debug -T test --output-on-failure
 
   macos:
-    name: "macOS Latest (AppleClang 12.0)"
+    name: "macOS Latest (AppleClang)"
     runs-on: macos-latest
     steps:
       - name: Checkout
