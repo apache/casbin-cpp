@@ -17,16 +17,9 @@ include(FetchContent)
 FetchContent_Declare(
   benchmark
   GIT_REPOSITORY https://github.com/google/benchmark.git
-  GIT_TAG v1.8.3
+  GIT_TAG v1.10.0
   DOWNLOAD_EXTRACT_TIMESTAMP FALSE
 )
 
 set(BENCHMARK_ENABLE_TESTING OFF)
 FetchContent_MakeAvailable(benchmark)
-
-FetchContent_GetProperties(benchmark)
-
-if(NOT benchmark_POPULATED)
-  FetchContent_Populate(benchmark)
-  add_subdirectory(${benchmark_SOURCE_DIR} ${benchmark_BINARY_DIR})
-endif()

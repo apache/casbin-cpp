@@ -26,15 +26,15 @@ jobs:
       fail-fast: false
       matrix:
         platform: [windows-latest, ubuntu-latest]
-        python-version: ["3.12"]
+        python-version: ["3.14"]
 
     runs-on: ${{ matrix.platform }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: true
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
     - name: Add requirements

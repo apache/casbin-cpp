@@ -17,16 +17,8 @@ include(FetchContent)
 FetchContent_Declare(
   pybind11
   GIT_REPOSITORY https://github.com/pybind/pybind11.git
-  GIT_TAG v2.11.1
+  GIT_TAG v3.1.0
   DOWNLOAD_EXTRACT_TIMESTAMP FALSE
 )
 
 FetchContent_MakeAvailable(pybind11)
-
-FetchContent_GetProperties(pybind11)
-
-# Populating manually, if not done automatically
-if(NOT pybind11_POPULATED)
-  FetchContent_Populate(pybind11)
-  add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
-endif()

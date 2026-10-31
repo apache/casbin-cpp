@@ -27,13 +27,13 @@ jobs:
     steps:
       - name: Checkout
         id: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.x'
       - name: Setup CMake
-        run: pip install "cmake==3.25.*"
+        run: pip install "cmake==4.4.*"
       - name: Install requirement
         id: install-requirements
         run: |
