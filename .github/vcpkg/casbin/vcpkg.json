@@ -1,9 +1,9 @@
 {
   "name": "casbin",
   "version": "@VERSION@",
-  "description": "An authorization library that supports access control models like ACL, RBAC, ABAC in C/C++",
-  "homepage": "https://github.com/casbin/casbin-cpp",
-  "license": "Apache-2.0",
+  "description": "Apache Casbin (Incubating) C++ authorization library. Apache Casbin is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.",
+  "homepage": "https://github.com/apache/casbin-cpp",
+  "license": "Apache-2.0 AND MIT AND BSD-3-Clause",
   "dependencies": [
     "nlohmann-json",
     {

@@ -368,3 +368,11 @@ build_support/
 
 # clang-format
 build_support/clang_format_exclusions.txt
+
+# Local CMake/Python/release verification outputs
+/build*/
+/dist/
+/dist-release/
+*.egg-info/
+__pycache__/
+*.py[cod]

@@ -1,8 +1,36 @@
-Casbin-CPP
-====
+<!--
+Licensed to the Apache Software Foundation (ASF) under one
+or more contributor license agreements.  See the NOTICE file
+distributed with this work for additional information
+regarding copyright ownership.  The ASF licenses this file
+to you under the Apache License, Version 2.0 (the
+"License"); you may not use this file except in compliance
+with the License.  You may obtain a copy of the License at
 
-[![CI](https://github.com/casbin/casbin-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/casbin/casbin-cpp/actions/workflows/ci.yml)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/casbin/casbin-cpp)](https://github.com/casbin/casbin-cpp/releases/latest)
+  https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing,
+software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied.  See the License for the
+specific language governing permissions and limitations
+under the License.
+-->
+
+# Apache Casbin (Incubating) - C++
+
+Apache Casbin is an effort undergoing incubation at The Apache Software
+Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of
+all newly accepted projects until a further review indicates that the
+infrastructure, communications, and decision making process have stabilized
+in a manner consistent with other successful ASF projects. While incubation
+status is not necessarily a reflection of the completeness or stability of
+the code, it does indicate that the project has yet to be fully endorsed by
+the ASF.
+
+
+[![CI](https://github.com/apache/casbin-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/apache/casbin-cpp/actions/workflows/ci.yml)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/apache/casbin-cpp)](https://github.com/apache/casbin-cpp/releases/latest)
 [![Discord](https://img.shields.io/discord/1022748306096537660?logo=discord&label=discord&color=5865F2)](https://discord.gg/S5UjpzGZjN)
 
 **News**: Are you still worried about how to write the correct Casbin policy? ``Casbin online editor`` is coming to help! Try it at: http://casbin.org/editor/
@@ -27,12 +55,12 @@ macOS   | :heavy_check_mark: Available
 [Casbin](https://github.com/casbin/casbin) | [jCasbin](https://github.com/casbin/jcasbin) | [node-Casbin](https://github.com/casbin/node-casbin) | [PHP-Casbin](https://github.com/php-casbin/php-casbin)
 production-ready | production-ready | production-ready | production-ready
 
-[![python](https://casbin.org/img/langs/python.png)](https://github.com/casbin/pycasbin) | [![dotnet](https://casbin.org/img/langs/dotnet.png)](https://github.com/casbin-net/Casbin.NET) | [![c++](https://casbin.org/img/langs/cpp.png)](https://github.com/casbin/casbin-cpp) | [![rust](https://casbin.org/img/langs/rust.png)](https://github.com/casbin/casbin-rs)
+[![python](https://casbin.org/img/langs/python.png)](https://github.com/casbin/pycasbin) | [![dotnet](https://casbin.org/img/langs/dotnet.png)](https://github.com/casbin-net/Casbin.NET) | [![c++](https://casbin.org/img/langs/cpp.png)](https://github.com/apache/casbin-cpp) | [![rust](https://casbin.org/img/langs/rust.png)](https://github.com/casbin/casbin-rs)
 ----|----|----|----
-[PyCasbin](https://github.com/casbin/pycasbin) | [Casbin.NET](https://github.com/casbin-net/Casbin.NET) | [Casbin-CPP](https://github.com/casbin/casbin-cpp) | [Casbin-RS](https://github.com/casbin/casbin-rs)
+[PyCasbin](https://github.com/casbin/pycasbin) | [Casbin.NET](https://github.com/casbin-net/Casbin.NET) | [Casbin-CPP](https://github.com/apache/casbin-cpp) | [Casbin-RS](https://github.com/casbin/casbin-rs)
 production-ready | production-ready | beta-test | production-ready
 
-**Note**: PyCasbin-on-CPP is available to use. Refer to the [documentation](./bindings/README.md) for installation and usage.
+**Note**: PyCasbin-on-CPP is available to use. Refer to the [documentation](./pycasbin/README.md) for installation and usage.
 
 ## Supported models
 
@@ -129,8 +157,8 @@ include(FetchContent)
 
 FetchContent_Declare(
         casbin
-        GIT_REPOSITORY https://github.com/casbin/casbin-cpp.git
-        GIT_TAG v1.38.1
+        GIT_REPOSITORY https://github.com/apache/casbin-cpp.git
+        GIT_TAG v1.68.0 # Use only after the approved release is available
 )
 
 set(CASBIN_BUILD_TEST OFF)            # If you don't need to build tests for casbin
@@ -169,7 +197,7 @@ You may integrate casbin into your CMake project through `find_package`.
 
 1. Clone/checkout to [`casbin/casbin-cpp:master`](https://github.com/EmperorYP7/casbin-cpp/tree/ctest-setup)
     ```bash
-    git clone https://github.com/casbin/casbin-cpp.git
+    git clone https://github.com/apache/casbin-cpp.git
     ```
 
 2. Open terminal/cmd in the root directory of the project:
@@ -217,7 +245,7 @@ You may integrate casbin into your CMake project through `find_package`.
 
 1. Clone/checkout to [`casbin/casbin-cpp:master`](https://github.com/EmperorYP7/casbin-cpp/tree/ctest-setup)
     ```bash
-    git clone https://github.com/casbin/casbin-cpp.git
+    git clone https://github.com/apache/casbin-cpp.git
     ```
 
 2. Open terminal/cmd in the root directory of the project:
@@ -366,7 +394,7 @@ Please read the [contributing guide](CONTRIBUTING.md).
 ## Contributors
 
 This project exists thanks to all the people who contribute.
-<a href="https://github.com/casbin/casbin-cpp/graphs/contributors"><img src="https://opencollective.com/casbin-cpp/contributors.svg?width=890&button=false" /></a>
+<a href="https://github.com/apache/casbin-cpp/graphs/contributors"><img src="https://opencollective.com/casbin-cpp/contributors.svg?width=890&button=false" /></a>
 
 ## Star History
 
@@ -379,5 +407,24 @@ This project is licensed under the [Apache 2.0 license](LICENSE).
 ## Contact
 
 If you have any issues or feature requests, please contact us. PR is welcomed.
-- https://github.com/casbin/casbin-cpp/issues
+- https://github.com/apache/casbin-cpp/issues
 - https://discord.gg/S5UjpzGZjN
+
+
+## Releases and verification
+
+This preparation targets 1.68.0. Source candidates and formal releases have
+independent review and approval stages; see [RELEASING.md](RELEASING.md).
+Obtain approved source distributions from the
+[Apache download area](https://downloads.apache.org/incubator/casbin/), and
+verify them using the project's KEYS and the
+[Apache verification instructions](https://www.apache.org/info/verification.html).
+GitHub tags or a successful CI run do not establish release approval.
+Historical GitHub versions are not evidence of an approved Apache release.
+
+The public CMake package/target `casbin` / `casbin::casbin`, C++ namespace
+`casbin`, and the vcpkg port name `casbin` remain compatible. The optional
+`pycasbin` module is a local binding, with no PyPI publication workflow here.
+Policy models, matcher expressions and custom regular expressions are trusted
+configuration; applications must validate request data and handle exceptions
+for malformed inputs at their boundary.

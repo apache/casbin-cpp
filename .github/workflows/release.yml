@@ -1,199 +1,119 @@
-#  Copyright 2026 The casbin Authors. All Rights Reserved.
-
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-
-#     http://www.apache.org/licenses/LICENSE-2.0
-
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
-# Releases are cut by hand: the release manager pushes a tag, and this workflow
-# turns that tag into a GitHub release. Nothing is published on a plain merge to
-# master, because an Apache release has to be voted on before it exists.
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-#   v1.4.0-rc1  ->  GitHub *pre-release*, for the release manager to sign and
-#                   put up for a vote.
-#   v1.4.0      ->  GitHub release plus a pull request against the vcpkg
-#                   registry, once that vote has passed.
+#   https://www.apache.org/licenses/LICENSE-2.0
 #
-# Both cases attach the same source package, named and laid out the way an
-# Apache release vote expects. The release manager downloads it, signs it
-# locally, and votes with it; the signature never comes back through here.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
 name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*-rc*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing final tag vX.Y.Z, pointing at the approved candidate commit'
+        required: true
+        type: string
+      project_result:
+        description: 'Public project vote result URL (lists.apache.org/thread/...)'
+        required: true
+        type: string
+      incubator_result:
+        description: 'Public IPMC vote result URL (lists.apache.org/thread/...)'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.repository }}-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
-  github-release:
-    name: GitHub release
-    if: github.repository == 'apache/casbin-cpp'
+  release:
+    if: github.repository == 'apache/casbin-cpp' && (github.event_name == 'push' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
-      prerelease: ${{ steps.meta.outputs.prerelease }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
-
-      - name: Read the version out of the tag
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - name: Validate mode and committed version
         id: meta
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+          EVENT: ${{ github.event_name }}
+          PROJECT_RESULT: ${{ inputs.project_result }}
+          INCUBATOR_RESULT: ${{ inputs.incubator_result }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          full="${tag#v}"
-          # The package always carries the final version, even for a release
-          # candidate, so the exact bits that were voted on can be promoted
-          # without being repackaged: v1.4.0-rc1 also packages as 1.4.0.
-          version="${full%%-rc*}"
-          if [ "$full" = "$version" ]; then
-            prerelease=false
+          python .github/scripts/release.py meta "$TAG" >> "$GITHUB_OUTPUT"
+          if [[ "$EVENT" == workflow_dispatch ]]; then
+            [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            [[ "$PROJECT_RESULT" =~ ^https://lists\.apache\.org/thread/[a-z0-9]+$ ]]
+            [[ "$INCUBATOR_RESULT" =~ ^https://lists\.apache\.org/thread/[a-z0-9]+$ ]]
           else
-            prerelease=true
+            [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-rc[1-9][0-9]*$ ]]
           fi
-          {
-            echo "version=${version}"
-            echo "prerelease=${prerelease}"
-          } >> "$GITHUB_OUTPUT"
-          echo "::notice::${tag} -> version ${version}, prerelease=${prerelease}"
-
-      - name: Build the source release package
-        id: package
+      - name: Export unsigned source candidate
+        if: steps.meta.outputs.is_rc == 'true'
         env:
-          VERSION: ${{ steps.meta.outputs.version }}
-        run: |
-          set -euo pipefail
-          name="apache-casbin-cpp-${VERSION}-src"
-          # git archive ships exactly what is tracked at the tag: no .git, no
-          # build output, no bundled binaries, everything under a single
-          # versioned top-level directory.
-          git archive --format=tar.gz --prefix="${name}/" -o "${name}.tar.gz" "${GITHUB_REF_NAME}"
-          sha512sum "${name}.tar.gz" > "${name}.tar.gz.sha512"
-          echo "tarball=${name}.tar.gz" >> "$GITHUB_OUTPUT"
-
-      - name: Check the package carries the required legal files
+          TAG: ${{ github.ref_name }}
+        run: python .github/scripts/release.py archive "$TAG"
+      - name: Verify approved ASF originals against the final tag
+        if: steps.meta.outputs.is_rc == 'false'
         env:
-          TARBALL: ${{ steps.package.outputs.tarball }}
-        run: |
-          set -euo pipefail
-          prefix="${TARBALL%.tar.gz}"
-          # Listed once into a variable: piping tar into `grep -q` would leave
-          # tar killed by SIGPIPE, which pipefail reports as a failed check.
-          listing="$(tar -tzf "${TARBALL}")"
-          for legal in LICENSE NOTICE; do
-            if ! grep -qx "${prefix}/${legal}" <<< "${listing}"; then
-              echo "::error::${legal} is missing from ${TARBALL}; the release vote would fail on it"
-              exit 1
-            fi
-          done
-
-      - name: Publish the release
+          TAG: ${{ inputs.tag }}
+        run: python .github/scripts/release.py verify "$TAG"
+      - name: Refuse replacement of an existing GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TARBALL: ${{ steps.package.outputs.tarball }}
-          PRERELEASE: ${{ steps.meta.outputs.prerelease }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          args=(--title "${GITHUB_REF_NAME}" --generate-notes)
-          if [ "${PRERELEASE}" = "true" ]; then
-            args+=(--prerelease)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo '::error::Release exists; assets will not be overwritten. Inspect partial publication before retrying.'
+            exit 1
           fi
-          gh release create "${GITHUB_REF_NAME}" "${args[@]}" "${TARBALL}" "${TARBALL}.sha512"
-
-  vcpkg:
-    name: Submit to vcpkg
-    needs: github-release
-    # Release candidates exist only for the vote; they never reach a registry.
-    if: needs.github-release.outputs.prerelease == 'false'
-    runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ needs.github-release.outputs.version }}
-      # A fork of microsoft/vcpkg that the token below can push to.
-      FORK: ${{ vars.VCPKG_FORK || 'casbin/vcpkg' }}
-    steps:
-      - name: Check the vcpkg fork token is configured
-        id: gate
+      - name: Write release notes
         env:
-          VCPKG_PR_TOKEN: ${{ secrets.VCPKG_PR_TOKEN }}
+          IS_RC: ${{ steps.meta.outputs.is_rc }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          PROJECT_RESULT: ${{ inputs.project_result }}
+          INCUBATOR_RESULT: ${{ inputs.incubator_result }}
         run: |
-          if [ -n "${VCPKG_PR_TOKEN}" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          printf 'Apache Casbin (Incubating) — C++ %s\n\n' "$VERSION" > release-notes.md
+          cat DISCLAIMER >> release-notes.md
+          if [[ "$IS_RC" == true ]]; then
+            printf '\n\nUnsigned source candidate for review; the RM must sign and stage it before voting. This is not an approved release.\n' >> release-notes.md
           else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::VCPKG_PR_TOKEN is not set, so no vcpkg pull request was opened for ${VERSION}."
+            printf '\n\nProject result: %s\nIPMC result: %s\nSource assets are the approved ASF originals.\n' "$PROJECT_RESULT" "$INCUBATOR_RESULT" >> release-notes.md
+            printf '\nSource: https://downloads.apache.org/incubator/casbin/cpp-%s-incubating/\nKEYS: https://downloads.apache.org/incubator/casbin/KEYS\nVerification: https://www.apache.org/info/verification.html\n' "$VERSION" >> release-notes.md
           fi
-
-      - name: Checkout casbin-cpp
-        if: steps.gate.outputs.enabled == 'true'
-        uses: actions/checkout@v7
-        with:
-          path: casbin-cpp
-
-      - name: Checkout vcpkg
-        if: steps.gate.outputs.enabled == 'true'
-        uses: actions/checkout@v7
-        with:
-          repository: microsoft/vcpkg
-          path: vcpkg
-          fetch-depth: 0
-
-      - name: Render the casbin port
-        if: steps.gate.outputs.enabled == 'true'
-        run: |
-          set -euo pipefail
-          # vcpkg_from_github pins the tarball GitHub generates for the tag, so
-          # that is the file whose checksum goes into the port.
-          curl -fsSL -o source.tar.gz \
-            "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/v${VERSION}.tar.gz"
-          sha512="$(sha512sum source.tar.gz | cut -d' ' -f1)"
-          mkdir -p vcpkg/ports/casbin
-          for file in portfile.cmake vcpkg.json; do
-            sed -e "s|@VERSION@|${VERSION}|g" -e "s|@SHA512@|${sha512}|g" \
-              "casbin-cpp/.github/vcpkg/casbin/${file}" > "vcpkg/ports/casbin/${file}"
-          done
-
-      - name: Update the vcpkg version database
-        if: steps.gate.outputs.enabled == 'true'
-        working-directory: vcpkg
-        run: |
-          set -euo pipefail
-          git config user.name "casbin-bot"
-          git config user.email "casbin-bot@users.noreply.github.com"
-          git add ports/casbin
-          git commit -m "[casbin] Update to ${VERSION}"
-          ./bootstrap-vcpkg.sh -disableMetrics
-          # x-add-version reads the port out of the commit above, so it has to
-          # run after it; the result is folded back into the same commit.
-          ./vcpkg x-add-version casbin --overwrite-version
-          git add versions
-          git commit --amend --no-edit
-
-      - name: Open the pull request against microsoft/vcpkg
-        if: steps.gate.outputs.enabled == 'true'
-        working-directory: vcpkg
+      - name: Create GitHub release without replacing assets
         env:
-          GH_TOKEN: ${{ secrets.VCPKG_PR_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          IS_RC: ${{ steps.meta.outputs.is_rc }}
         run: |
           set -euo pipefail
-          branch="casbin-${VERSION}"
-          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${FORK}.git"
-          git push --force fork "HEAD:${branch}"
-          gh pr create \
-            --repo microsoft/vcpkg \
-            --base master \
-            --head "${FORK%%/*}:${branch}" \
-            --title "[casbin] Update to ${VERSION}" \
-            --body "Updates the \`casbin\` port to ${VERSION}, released at https://github.com/${GITHUB_REPOSITORY}/releases/tag/v${VERSION}."
+          kind=(--latest)
+          if [[ "$IS_RC" == true ]]; then kind=(--prerelease --latest=false); fi
+          gh release create "$TAG" --title "$TAG (Apache Casbin Incubating)" --notes-file release-notes.md "${kind[@]}" dist-release/*.tar.gz dist-release/*.sha512 $(find dist-release -maxdepth 1 -name '*.asc' -print)
