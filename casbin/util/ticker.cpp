@@ -33,29 +33,37 @@ Ticker::~Ticker() {
 }
 
 void Ticker::start() {
+    std::lock_guard<std::mutex> lifecycle(_lifecycleMutex);
     if (_running) return;
+    if (_worker.joinable())
+        _worker.join();
     _running = true;
-    _futures1.push_back(std::async(std::launch::async, &Ticker::timer_loop, this));
+    _worker = std::thread(&Ticker::timer_loop, this);
 }
 
 void Ticker::stop() {
-    _running = false;
-    std::lock_guard<std::mutex> lock(_tickIntervalMutex);
-    for (auto&& f : _futures1) {
-        f.wait();
+    std::lock_guard<std::mutex> lifecycle(_lifecycleMutex);
+    {
+        std::lock_guard<std::mutex> lock(_tickIntervalMutex);
+        _running = false;
     }
-    for (auto&& f : _futures2) {
-        f.wait();
-    }
+    _wake.notify_all();
+    if (_worker.joinable() && _worker.get_id() != std::this_thread::get_id())
+        _worker.join();
 }
 
 void Ticker::timer_loop() {
+    std::unique_lock<std::mutex> lock(_tickIntervalMutex);
     while (_running) {
-        {
-            std::lock_guard<std::mutex> lock(_tickIntervalMutex);
-            _futures2.push_back(std::async(std::launch::async, _onTick));
-            std::this_thread::sleep_for(_tickInterval);
+        lock.unlock();
+        try {
+            _onTick();
+        } catch (...) {
+            // The previous async callbacks also kept exceptions in their
+            // futures. Keep a callback failure from terminating the scheduler.
         }
+        lock.lock();
+        _wake.wait_for(lock, _tickInterval, [this] { return !_running.load(); });
     }
 }
 
