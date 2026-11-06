@@ -20,6 +20,8 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <random>
 #include <regex>
 #include <string>
@@ -108,22 +110,33 @@ TEST(ReleaseTicker, SlowCallbacksDoNotOverlapAndCanRestart) {
     std::atomic<int> active{0};
     std::atomic<int> calls{0};
     std::atomic<bool> overlap{false};
+    std::mutex progressMutex;
+    std::condition_variable progress;
     casbin::Ticker ticker([&] {
         if (active.fetch_add(1) != 0)
             overlap = true;
-        ++calls;
+        {
+            std::lock_guard<std::mutex> lock(progressMutex);
+            ++calls;
+        }
+        progress.notify_one();
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         --active;
     }, std::chrono::milliseconds(1));
+    const auto waitForCalls = [&](int minimum) {
+        std::unique_lock<std::mutex> lock(progressMutex);
+        return progress.wait_for(lock, std::chrono::seconds(5), [&] { return calls.load() >= minimum; });
+    };
     ticker.start();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Wait for observable callback progress, including on busy CI runners.
+    EXPECT_TRUE(waitForCalls(3));
     ticker.stop();
     EXPECT_FALSE(overlap);
     EXPECT_EQ(active.load(), 0);
     EXPECT_GE(calls.load(), 1);
     const auto before = calls.load();
     ticker.start();
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_TRUE(waitForCalls(before + 1));
     ticker.stop();
     ticker.stop();
     EXPECT_GT(calls.load(), before);
