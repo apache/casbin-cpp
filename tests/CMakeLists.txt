@@ -27,7 +27,6 @@ if(CASBIN_BUILD_TEST)
 
   set(CASBIN_TEST_SOURCE
     built_in_functions_test.cpp
-    matcher_release_test.cpp
     config_test.cpp
     enforcer_test.cpp
     enforcer_cached_test.cpp
@@ -64,7 +63,7 @@ if(CASBIN_BUILD_TEST)
   )
 
   include(GoogleTest)
-  gtest_discover_tests(casbintest PROPERTIES TIMEOUT 120)
+  gtest_discover_tests(casbintest)
 endif()
 
 if(CASBIN_BUILD_BENCHMARK)

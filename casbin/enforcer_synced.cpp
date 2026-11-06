@@ -125,8 +125,7 @@ bool SyncedEnforcer ::IsAutoLoadingRunning() {
 
 // StopAutoLoadPolicy causes the thread to exit
 void SyncedEnforcer ::StopAutoLoadPolicy() {
-    if (ticker)
-        ticker->stop();
+    ticker->stop();
     autoLoadRunning = false;
 }
 

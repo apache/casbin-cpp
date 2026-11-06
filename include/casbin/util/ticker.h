@@ -21,13 +21,9 @@
 #define TICKER_H
 
 #include <chrono>
-#include <atomic>
-#include <condition_variable>
 #include <functional>
 #include <future>
 #include <mutex>
-#include <thread>
-#include <vector>
 
 namespace casbin {
 
@@ -50,10 +46,9 @@ private:
     on_tick_t _onTick;
     tick_interval_t _tickInterval;
     std::atomic_bool _running;
-    std::mutex _lifecycleMutex;
     std::mutex _tickIntervalMutex;
-    std::condition_variable _wake;
-    std::thread _worker;
+    future_vec _futures1;
+    future_vec _futures2;
 };
 
 }; // namespace casbin
