@@ -15,7 +15,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 set(CMAKE_WARN_DEPRECATED ON)
-set(PY_CASBIN_VERSION 1.1)
+set(PY_CASBIN_VERSION 1.68.0)
 
 if(APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
     # The value of this variable should be set prior to the first project() command invocation
@@ -28,9 +28,9 @@ endif()
 
 project(
     casbin
-    VERSION 1.53.2
+    VERSION 1.68.0
     DESCRIPTION "An authorization library that supports access control models like ACL, RBAC, ABAC in C/C++"
-    HOMEPAGE_URL https://github.com/casbin/casbin-cpp
+    HOMEPAGE_URL https://github.com/apache/casbin-cpp
     LANGUAGES CXX C
 )
 
@@ -185,6 +185,19 @@ if(CASBIN_INSTALL)
 
     set(CASBIN_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/casbin"
         CACHE STRING "Path to the installed casbin CMake package files")
+
+    # Carry the exact source legal material into installed C++ packages.
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" CASBIN_BINARY_LICENSE)
+    string(FIND "${CASBIN_BINARY_LICENSE}" "setup.py contains build helper code" CASBIN_SOURCE_ONLY_LICENSE)
+    if(CASBIN_SOURCE_ONLY_LICENSE GREATER -1)
+        string(SUBSTRING "${CASBIN_BINARY_LICENSE}" 0 ${CASBIN_SOURCE_ONLY_LICENSE} CASBIN_BINARY_LICENSE)
+    endif()
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/licenses/nlohmann-json-LICENSE.txt" CASBIN_JSON_LICENSE)
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-installed"
+        "${CASBIN_BINARY_LICENSE}\nThe installed library includes code compiled from nlohmann/json (MIT):\n\n${CASBIN_JSON_LICENSE}")
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/LICENSE-installed"
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/casbin RENAME LICENSE)
+    install(FILES NOTICE DISCLAIMER DESTINATION ${CMAKE_INSTALL_DATADIR}/casbin)
 
     # Installing headers
     install(

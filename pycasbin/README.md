@@ -1,4 +1,17 @@
-## Language Bindings for `casbin-cpp`
+# Apache Casbin C++ (Incubating): local Python bindings
+
+Apache Casbin is an effort undergoing incubation at The Apache Software
+Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of
+all newly accepted projects until a further review indicates that the
+infrastructure, communications, and decision making process have stabilized
+in a manner consistent with other successful ASF projects. While incubation
+status is not necessarily a reflection of the completeness or stability of
+the code, it does indicate that the project has yet to be fully endorsed by
+the ASF.
+
+Use a dedicated virtual environment for these local bindings. The historical
+`pycasbin` distribution name also identifies a different, pure-Python PyPI
+project; this preparation does not add a PyPI publisher.
 
 At present, `casbin-cpp` provides language bindings for Python, we named it `pycasbin`.
 
@@ -6,11 +19,11 @@ At present, `casbin-cpp` provides language bindings for Python, we named it `pyc
 
 ### Use `pip` install the `pycasbin` module
 
-It is assumed you have `CMake >=v3.19` and `Python >= 3.6` installed. Current `pycasbin` only support `pip` install in local machine. 
+It is assumed you have `CMake >=v3.19` and `Python >= 3.9` installed. Current `pycasbin` only support `pip` install in local machine.
 
 1. Clone/download the project:
     ```bash
-    git clone https://github.com/casbin/casbin-cpp.git
+    git clone https://github.com/apache/casbin-cpp.git
     ```
 
 2. Update `wheel setuptools`:
