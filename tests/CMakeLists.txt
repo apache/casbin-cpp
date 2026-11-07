@@ -24,6 +24,7 @@ if(CASBIN_BUILD_TEST)
 
   set(CASBIN_TEST_SOURCE
     built_in_functions_test.cpp
+    ticker_test.cpp
     config_test.cpp
     enforcer_test.cpp
     enforcer_cached_test.cpp
