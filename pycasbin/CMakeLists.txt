@@ -35,7 +35,7 @@ set_target_properties(pycasbin PROPERTIES
 )
 
 # For in-source versioning macro
-add_definitions(-DPY_CASBIN_VERSION=${PY_CASBIN_VERSION})
+add_definitions(-DPY_CASBIN_VERSION="${PY_CASBIN_VERSION}")
 
 target_link_libraries(pycasbin
     PRIVATE
