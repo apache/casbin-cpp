@@ -44,8 +44,6 @@ macOS   | :heavy_check_mark: Available
 
 <br/>
 
-![casbin Logo](./assets/images/casbin-logo.png)
-
 <br/>
 
 ## All the languages supported by Casbin:
