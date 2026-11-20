@@ -28,6 +28,8 @@ release. Create the final tag at the approved commit after promotion.
 The source release can be built with a C++17 compiler. When consuming the
 installed CMake target, configure the consumer project to use C++17 or later.
 
-A vcpkg port update or a Python bindings package requires its own artifact and
-channel checks. If preparing a vcpkg update after approval, update its source
-URL and SHA-512 together and build that port from the approved source.
+The source archive excludes the vcpkg port template and manifest under
+`.github/vcpkg/casbin/`. A vcpkg port update or a Python bindings package
+requires its own artifact and channel checks. For a later vcpkg update, use
+the templates from Git and set the source URL and SHA-512 for the exact
+approved source archive used to build the port.

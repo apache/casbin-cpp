@@ -45,7 +45,9 @@ jobs:
             test -s "$legal"
           done
           mkdir dist
-          git archive --format=tar.gz --prefix="${name}/" -o "dist/${name}.tar.gz" HEAD
+          git archive --format=tar.gz --prefix="${name}/" -o "dist/${name}.tar.gz" HEAD -- . \
+            ':(exclude).github/vcpkg/casbin/portfile.cmake' \
+            ':(exclude).github/vcpkg/casbin/vcpkg.json'
           cd dist
           listing="$(tar -tzf "${name}.tar.gz")"
           for legal in LICENSE NOTICE DISCLAIMER; do
