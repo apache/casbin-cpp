@@ -12,188 +12,51 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Releases are cut by hand: the release manager pushes a tag, and this workflow
-# turns that tag into a GitHub release. Nothing is published on a plain merge to
-# master, because an Apache release has to be voted on before it exists.
-#
-#   v1.4.0-rc1  ->  GitHub *pre-release*, for the release manager to sign and
-#                   put up for a vote.
-#   v1.4.0      ->  GitHub release plus a pull request against the vcpkg
-#                   registry, once that vote has passed.
-#
-# Both cases attach the same source package, named and laid out the way an
-# Apache release vote expects. The release manager downloads it, signs it
-# locally, and votes with it; the signature never comes back through here.
-
-name: Release
+name: Prepare release candidate
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*-rc*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  github-release:
-    name: GitHub release
+  source:
     if: github.repository == 'apache/casbin-cpp'
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
-      prerelease: ${{ steps.meta.outputs.prerelease }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Read the version out of the tag
-        id: meta
+      - name: Build the unsigned source candidate
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          full="${tag#v}"
-          # The package always carries the final version, even for a release
-          # candidate, so the exact bits that were voted on can be promoted
-          # without being repackaged: v1.4.0-rc1 also packages as 1.4.0.
-          version="${full%%-rc*}"
-          if [ "$full" = "$version" ]; then
-            prerelease=false
-          else
-            prerelease=true
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)-rc[1-9][0-9]*$ ]]; then
+            echo '::error::Expected vX.Y.Z-rcN.'
+            exit 1
           fi
-          {
-            echo "version=${version}"
-            echo "prerelease=${prerelease}"
-          } >> "$GITHUB_OUTPUT"
-          echo "::notice::${tag} -> version ${version}, prerelease=${prerelease}"
-
-      - name: Build the source release package
-        id: package
-        env:
-          VERSION: ${{ steps.meta.outputs.version }}
-        run: |
-          set -euo pipefail
-          name="apache-casbin-cpp-${VERSION}-src"
-          # git archive ships exactly what is tracked at the tag: no .git, no
-          # build output, no bundled binaries, everything under a single
-          # versioned top-level directory.
-          git archive --format=tar.gz --prefix="${name}/" -o "${name}.tar.gz" "${GITHUB_REF_NAME}"
+          version="${BASH_REMATCH[1]}"
+          name="apache-casbin-cpp-${version}-incubating-src"
+          for legal in LICENSE NOTICE DISCLAIMER; do
+            test -s "$legal"
+          done
+          mkdir dist
+          git archive --format=tar.gz --prefix="${name}/" -o "dist/${name}.tar.gz" HEAD
+          cd dist
+          listing="$(tar -tzf "${name}.tar.gz")"
+          for legal in LICENSE NOTICE DISCLAIMER; do
+            grep -qx "${name}/${legal}" <<< "$listing"
+          done
           sha512sum "${name}.tar.gz" > "${name}.tar.gz.sha512"
-          echo "tarball=${name}.tar.gz" >> "$GITHUB_OUTPUT"
+          sha512sum -c "${name}.tar.gz.sha512"
 
-      - name: Check the package carries the required legal files
-        env:
-          TARBALL: ${{ steps.package.outputs.tarball }}
-        run: |
-          set -euo pipefail
-          prefix="${TARBALL%.tar.gz}"
-          # Listed once into a variable: piping tar into `grep -q` would leave
-          # tar killed by SIGPIPE, which pipefail reports as a failed check.
-          listing="$(tar -tzf "${TARBALL}")"
-          for legal in LICENSE NOTICE; do
-            if ! grep -qx "${prefix}/${legal}" <<< "${listing}"; then
-              echo "::error::${legal} is missing from ${TARBALL}; the release vote would fail on it"
-              exit 1
-            fi
-          done
-
-      - name: Publish the release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TARBALL: ${{ steps.package.outputs.tarball }}
-          PRERELEASE: ${{ steps.meta.outputs.prerelease }}
-        run: |
-          set -euo pipefail
-          args=(--title "${GITHUB_REF_NAME}" --generate-notes)
-          if [ "${PRERELEASE}" = "true" ]; then
-            args+=(--prerelease)
-          fi
-          gh release create "${GITHUB_REF_NAME}" "${args[@]}" "${TARBALL}" "${TARBALL}.sha512"
-
-  vcpkg:
-    name: Submit to vcpkg
-    needs: github-release
-    # Release candidates exist only for the vote; they never reach a registry.
-    if: needs.github-release.outputs.prerelease == 'false'
-    runs-on: ubuntu-latest
-    env:
-      VERSION: ${{ needs.github-release.outputs.version }}
-      # A fork of microsoft/vcpkg that the token below can push to.
-      FORK: ${{ vars.VCPKG_FORK || 'casbin/vcpkg' }}
-    steps:
-      - name: Check the vcpkg fork token is configured
-        id: gate
-        env:
-          VCPKG_PR_TOKEN: ${{ secrets.VCPKG_PR_TOKEN }}
-        run: |
-          if [ -n "${VCPKG_PR_TOKEN}" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::VCPKG_PR_TOKEN is not set, so no vcpkg pull request was opened for ${VERSION}."
-          fi
-
-      - name: Checkout casbin-cpp
-        if: steps.gate.outputs.enabled == 'true'
-        uses: actions/checkout@v7
+      - name: Retain the source candidate for the release manager
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          path: casbin-cpp
-
-      - name: Checkout vcpkg
-        if: steps.gate.outputs.enabled == 'true'
-        uses: actions/checkout@v7
-        with:
-          repository: microsoft/vcpkg
-          path: vcpkg
-          fetch-depth: 0
-
-      - name: Render the casbin port
-        if: steps.gate.outputs.enabled == 'true'
-        run: |
-          set -euo pipefail
-          # vcpkg_from_github pins the tarball GitHub generates for the tag, so
-          # that is the file whose checksum goes into the port.
-          curl -fsSL -o source.tar.gz \
-            "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/v${VERSION}.tar.gz"
-          sha512="$(sha512sum source.tar.gz | cut -d' ' -f1)"
-          mkdir -p vcpkg/ports/casbin
-          for file in portfile.cmake vcpkg.json; do
-            sed -e "s|@VERSION@|${VERSION}|g" -e "s|@SHA512@|${sha512}|g" \
-              "casbin-cpp/.github/vcpkg/casbin/${file}" > "vcpkg/ports/casbin/${file}"
-          done
-
-      - name: Update the vcpkg version database
-        if: steps.gate.outputs.enabled == 'true'
-        working-directory: vcpkg
-        run: |
-          set -euo pipefail
-          git config user.name "casbin-bot"
-          git config user.email "casbin-bot@users.noreply.github.com"
-          git add ports/casbin
-          git commit -m "[casbin] Update to ${VERSION}"
-          ./bootstrap-vcpkg.sh -disableMetrics
-          # x-add-version reads the port out of the commit above, so it has to
-          # run after it; the result is folded back into the same commit.
-          ./vcpkg x-add-version casbin --overwrite-version
-          git add versions
-          git commit --amend --no-edit
-
-      - name: Open the pull request against microsoft/vcpkg
-        if: steps.gate.outputs.enabled == 'true'
-        working-directory: vcpkg
-        env:
-          GH_TOKEN: ${{ secrets.VCPKG_PR_TOKEN }}
-        run: |
-          set -euo pipefail
-          branch="casbin-${VERSION}"
-          git remote add fork "https://x-access-token:${GH_TOKEN}@github.com/${FORK}.git"
-          git push --force fork "HEAD:${branch}"
-          gh pr create \
-            --repo microsoft/vcpkg \
-            --base master \
-            --head "${FORK%%/*}:${branch}" \
-            --title "[casbin] Update to ${VERSION}" \
-            --body "Updates the \`casbin\` port to ${VERSION}, released at https://github.com/${GITHUB_REPOSITORY}/releases/tag/v${VERSION}."
+          name: source-candidate-${{ github.ref_name }}
+          path: dist/*
+          if-no-files-found: error

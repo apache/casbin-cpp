@@ -1,6 +1,5 @@
-# Template for the vcpkg `casbin` port. The Release workflow substitutes
-# @VERSION@ and @SHA512@ and opens a pull request against microsoft/vcpkg;
-# this file is never consumed by vcpkg directly from here.
+# Template for a separate vcpkg port update. Fill the version and SHA-512
+# from the approved source for that update and verify the URL and hash.
 
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
