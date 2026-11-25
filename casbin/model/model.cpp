@@ -22,6 +22,7 @@
 #ifndef MODEL_CPP
 #define MODEL_CPP
 
+#include <algorithm>
 #include <sstream>
 #include <regex>
 
@@ -298,65 +299,54 @@ bool Model::AddPolicies(const std::string& sec, const std::string& p_type, const
     return true;
 }
 
+// UpdatePolicy replaces a policy rule in the model. Nothing changes when the old rule does not exist or the new rule
+// already exists.
 bool Model::UpdatePolicy(const std::string& sec, const std::string& p_type, const std::vector<std::string>& oldRule, const std::vector<std::string>& newRule) {
-    // Caching policy by reference for the scope of this function
-    auto& policy = m[sec].assertion_map[p_type]->policy;
-
-    // Status flags
-    bool is_oldRule_deleted = false, is_newRule_added = false;
-
-    for (auto it = policy.begin(); it != policy.end(); ++it) {
-        if (oldRule == *it) {
-            policy.erase(it);
-            is_oldRule_deleted = true;
-            break;
-        }
-    }
-
-    if (!is_oldRule_deleted)
-        return false;
-
-    // Prevents duplicate policies
-    if (!this->HasPolicy(sec, p_type, newRule)) {
-        policy.emplace(newRule);
-        is_newRule_added = true;
-    }
-
-    if (!is_newRule_added)
-        return false;
-
-    return is_oldRule_deleted && is_newRule_added;
+    return this->UpdatePolicies(sec, p_type, PoliciesValues({oldRule}), PoliciesValues({newRule}));
 }
 
+// UpdatePolicies replaces policy rules in the model, all of them or none: nothing changes when the numbers of rules
+// differ, an old rule does not exist or is given twice, or a new rule is given twice or already exists and is not
+// being replaced.
 bool Model::UpdatePolicies(const std::string& sec, const std::string& p_type, const PoliciesValues& oldRules, const PoliciesValues& newRules) {
     // Caching policy by reference for the scope of this function
     auto& policy = this->m[sec].assertion_map[p_type]->policy;
 
-    // Deleting old rules
-    bool is_oldRule_deleted;
+    if (oldRules.size() != newRules.size())
+        return false;
+
+    std::vector<std::vector<std::string>> old_rules;
+    std::vector<PoliciesValues::iterator> positions;
     for (const std::vector<std::string>& oldRule : oldRules) {
-        is_oldRule_deleted = false;
-        for (auto it = policy.begin(); it != policy.end(); ++it) {
-            if (oldRule == *it) {
-                policy.erase(it);
-                is_oldRule_deleted = true;
-                break;
-            }
-        }
-        if (!is_oldRule_deleted)
+        if (std::find(old_rules.begin(), old_rules.end(), oldRule) != old_rules.end())
             return false;
+
+        auto it = policy.find(oldRule);
+        if (!(it != policy.end()))
+            return false;
+
+        old_rules.push_back(oldRule);
+        positions.push_back(it);
     }
 
-    // Checking if the policy already contains newRule
+    std::vector<std::vector<std::string>> new_rules;
     for (const std::vector<std::string>& newRule : newRules) {
-        if (!this->HasPolicy(sec, p_type, newRule))
-            continue;
-        else
+        if (std::find(new_rules.begin(), new_rules.end(), newRule) != new_rules.end())
             return false;
+        if (this->HasPolicy(sec, p_type, newRule) && std::find(old_rules.begin(), old_rules.end(), newRule) == old_rules.end())
+            return false;
+
+        new_rules.push_back(newRule);
     }
 
-    for (const std::vector<std::string>& newRule : newRules) {
-       policy.emplace(newRule);
+    if (policy.is_hash()) {
+        for (const auto& it : positions)
+            policy.erase(it);
+        for (const std::vector<std::string>& newRule : new_rules)
+            policy.emplace(newRule);
+    } else {
+        for (size_t i = 0; i < positions.size(); i++)
+            *positions[i] = new_rules[i];
     }
 
     return true;

@@ -302,4 +302,27 @@ TEST(TestManagementAPI, TestPoliciesWithoutBatchAdapter) {
     ASSERT_FALSE(e.Enforce({"eve", "data3", "read"}));
 }
 
+TEST(TestManagementAPI, TestUpdatePoliciesAllOrNothing) {
+    casbin::Enforcer e(basic_model_path, basic_policy_path);
+
+    ASSERT_FALSE(e.UpdatePolicies(PoliciesValues({{"alice", "data1", "read"}, {"eve", "data9", "read"}}), PoliciesValues({{"alice", "data1", "write"}, {"eve", "data9", "write"}})));
+    ASSERT_TRUE(e.HasPolicy({"alice", "data1", "read"}));
+    ASSERT_FALSE(e.HasPolicy({"alice", "data1", "write"}));
+
+    ASSERT_FALSE(e.UpdatePolicies(PoliciesValues({{"alice", "data1", "read"}}), PoliciesValues({{"bob", "data2", "write"}})));
+    ASSERT_TRUE(e.HasPolicy({"alice", "data1", "read"}));
+    ASSERT_TRUE(e.HasPolicy({"bob", "data2", "write"}));
+
+    ASSERT_FALSE(e.UpdatePolicy({"alice", "data1", "read"}, {"bob", "data2", "write"}));
+    ASSERT_TRUE(e.HasPolicy({"alice", "data1", "read"}));
+
+    ASSERT_FALSE(e.UpdatePolicies(PoliciesValues({{"alice", "data1", "read"}, {"bob", "data2", "write"}}), PoliciesValues({{"eve", "data3", "read"}})));
+    ASSERT_TRUE(e.HasPolicy({"alice", "data1", "read"}));
+
+    ASSERT_TRUE(e.UpdatePolicies(PoliciesValues({{"alice", "data1", "read"}, {"bob", "data2", "write"}}), PoliciesValues({{"bob", "data2", "write"}, {"alice", "data1", "read"}})));
+    ASSERT_TRUE(e.HasPolicy({"alice", "data1", "read"}));
+    ASSERT_TRUE(e.HasPolicy({"bob", "data2", "write"}));
+    ASSERT_EQ(e.GetPolicy().size(), 2u);
+}
+
 } // namespace
