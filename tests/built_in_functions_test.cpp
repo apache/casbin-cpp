@@ -383,6 +383,17 @@ TEST(TestBuiltInFunctions, TestIPMatch) {
     TestIPMatchFn("192.168.2.123", "192.168.2.123/32", true);
     TestIPMatchFn("10.0.0.11", "10.0.0.0/8", true);
     TestIPMatchFn("11.0.0.123", "10.0.0.0/8", false);
+
+    TestIPMatchFn("192.168.2.123", "192.168.2.123", true);
+    TestIPMatchFn("192.168.2.123", "192.168.2.124", false);
+    TestIPMatchFn("::1", "::1", true);
+}
+
+TEST(TestBuiltInFunctions, TestIPMatchInvalidInput) {
+    EXPECT_THROW(casbin::IPMatch("not an ip", "192.168.2.0/24"), casbin::IllegalArgumentException);
+    EXPECT_THROW(casbin::IPMatch("192.168.2.123", "192.168.2.0/99"), casbin::IllegalArgumentException);
+    EXPECT_THROW(casbin::IPMatch("192.168.2.123", "192.168.2.0/"), casbin::IllegalArgumentException);
+    EXPECT_THROW(casbin::IPMatch("192.168.2.123", "not an ip"), casbin::IllegalArgumentException);
 }
 
 TEST(TestBuiltInFunctions, TestPatternTokensWithOwnGroups) {

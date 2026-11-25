@@ -291,16 +291,21 @@ bool IPMatch(const std::string& ip1, const std::string& ip2) {
     if (objIP1.isLegal == false)
         throw IllegalArgumentException("invalid argument: ip1 in IPMatch() function is not an IP address.");
 
-    CIDR objCIDR = parseCIDR(ip2);
-    if (objCIDR.ip.isLegal == false) {
-        IP objIP2 = parseIP(ip2);
-        if (objIP2.isLegal == false)
-            throw IllegalArgumentException("invalid argument: ip1 in IPMatch() function is not an IP address.");
-
-        return objIP1.Equal(objIP2);
+    if (ip2.find('/') != std::string::npos) {
+        CIDR objCIDR;
+        try {
+            objCIDR = parseCIDR(ip2);
+        } catch (const ParserException&) {
+            throw IllegalArgumentException("invalid argument: ip2 in IPMatch() function is neither an IP address nor a CIDR.");
+        }
+        return objCIDR.net.contains(objIP1);
     }
 
-    return objCIDR.net.contains(objIP1);
+    IP objIP2 = parseIP(ip2);
+    if (objIP2.isLegal == false)
+        throw IllegalArgumentException("invalid argument: ip2 in IPMatch() function is neither an IP address nor a CIDR.");
+
+    return objIP1.Equal(objIP2);
 }
 
 } // namespace casbin
