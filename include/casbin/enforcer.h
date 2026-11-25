@@ -23,6 +23,7 @@
 #include <atomic>
 #include <cstdint>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 #include "casbin/enforcer_interface.h"
@@ -69,6 +70,11 @@ private:
     bool m_auto_save;
     bool m_auto_build_role_links;
     bool m_auto_notify_watcher;
+
+    // m_rm_map holds the role manager of each role definition (g, g2, ...).
+    std::unordered_map<std::string, std::shared_ptr<RoleManager>> m_rm_map;
+
+    std::shared_ptr<RoleManager>& getNamedRoleManager(const std::string& p_type);
 
     // enforce use a custom matcher to decides whether a "subject" can access a "object"
     // with the operation "action", input parameters are usually: (matcher, sub, obj, act),
@@ -160,6 +166,10 @@ public:
     std::shared_ptr<RoleManager> GetRoleManager() override;
     // SetRoleManager sets the current role manager.
     void SetRoleManager(std::shared_ptr<RoleManager>& rm) override;
+    // GetNamedRoleManager gets the role manager of the named role definition, or nullptr if it does not exist.
+    std::shared_ptr<RoleManager> GetNamedRoleManager(const std::string& p_type);
+    // SetNamedRoleManager sets the role manager of the named role definition.
+    void SetNamedRoleManager(const std::string& p_type, std::shared_ptr<RoleManager>& rm);
     // SetEffector sets the current effector.
     void SetEffector(std::shared_ptr<Effector> eft) override;
     // ClearPolicy clears all policy.

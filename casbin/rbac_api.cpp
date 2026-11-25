@@ -22,6 +22,8 @@
 #ifndef RBAC_API_CPP
 #define RBAC_API_CPP
 
+#include <algorithm>
+
 #include "casbin/enforcer.h"
 #include "casbin/exception/casbin_enforcer_exception.h"
 #include "casbin/util/util.h"
@@ -159,24 +161,35 @@ bool Enforcer ::HasPermissionForUser(const std::string& user, const std::vector<
 // GetRolesForUser("alice") can only get: ["role:admin"].
 // But GetImplicitRolesForUser("alice") will get: ["role:admin", "role:user"].
 std::vector<std::string> Enforcer ::GetImplicitRolesForUser(const std::string& name, const std::vector<std::string>& domain) {
+    std::vector<std::string> p_types;
+    for (auto& [p_type, _] : m_rm_map)
+        p_types.push_back(p_type);
+    std::sort(p_types.begin(), p_types.end());
+
     std::vector<std::string> res;
-    std::unordered_map<std::string, bool> role_set;
-    role_set[name] = true;
+    for (const std::string& p_type : p_types) {
+        std::shared_ptr<RoleManager>& role_manager = m_rm_map[p_type];
+        if (!role_manager)
+            continue;
 
-    std::vector<std::string> q;
-    q.push_back(name);
+        std::unordered_map<std::string, bool> role_set;
+        role_set[name] = true;
 
-    while (q.size() > 0) {
-        std::string name = q[0];
-        q.erase(q.begin());
+        std::vector<std::string> q;
+        q.push_back(name);
 
-        std::vector<std::string> roles = rm->GetRoles(name, domain);
+        while (q.size() > 0) {
+            std::string name = q[0];
+            q.erase(q.begin());
 
-        for (int i = 0; i < roles.size(); i++) {
-            if (!(role_set.find(roles[i]) != role_set.end())) {
-                res.push_back(roles[i]);
-                q.push_back(roles[i]);
-                role_set[roles[i]] = true;
+            std::vector<std::string> roles = role_manager->GetRoles(name, domain);
+
+            for (int i = 0; i < roles.size(); i++) {
+                if (!(role_set.find(roles[i]) != role_set.end())) {
+                    res.push_back(roles[i]);
+                    q.push_back(roles[i]);
+                    role_set[roles[i]] = true;
+                }
             }
         }
     }

@@ -530,7 +530,7 @@ TEST(TestModelEnforcer, TestRBACModelWithPattern) {
     // You can see in policy that: "g2, /book/:id, book_group", so in "g2()" function in the matcher, instead
     // of checking whether "/book/:id" equals the obj: "/book/1", it checks whether the pattern matches.
     // You can see it as normal RBAC: "/book/:id" == "/book/1" becomes KeyMatch2("/book/:id", "/book/1")
-    e.AddNamedMatchingFunc("p", "", casbin::KeyMatch2);
+    e.AddNamedMatchingFunc("g2", "", casbin::KeyMatch2);
 
     auto evaluator = InitializeParams<casbin::ExprtkEvaluator>("alice", "/book/1", "GET");
     TestEnforce(e, evaluator, true);
@@ -551,7 +551,7 @@ TEST(TestModelEnforcer, TestRBACModelWithPattern) {
 
     // AddMatchingFunc() is actually setting a function because only one function is allowed,
     // so when we set "KeyMatch3", we are actually replacing "KeyMatch2" with "KeyMatch3".
-    e.AddNamedMatchingFunc("p", "", casbin::KeyMatch3);
+    e.AddNamedMatchingFunc("g2", "", casbin::KeyMatch3);
     evaluator = InitializeParams<casbin::ExprtkEvaluator>("alice", "/book2/1", "GET");
     TestEnforce(e, evaluator, true);
     evaluator = InitializeParams<casbin::ExprtkEvaluator>("alice", "/book2/2", "GET");

@@ -20,6 +20,7 @@
 /* This is a test file for testing built in functions in casbin */
 
 #include <casbin/casbin.h>
+#include <casbin/persist/string_adapter.h>
 #include <gtest/gtest.h>
 
 #include "config_path.h"
@@ -169,7 +170,9 @@ TEST(TestRBACAPI, TestImplicitRoleAPI) {
 
     dynamic_cast<casbin::DefaultRoleManager*>(e.GetRoleManager().get())->AddMatchingFunc(casbin::KeyMatch);
 
-    ASSERT_TRUE(casbin::ArrayEquals(std::vector<std::string>{"/book/1/2/3/4/5", "pen_admin", "/book/*", "book_group"}, e.GetImplicitRolesForUser("cathy")));
+    e.AddNamedMatchingFunc("g2", "", casbin::KeyMatch);
+
+    ASSERT_TRUE(casbin::ArrayEquals(std::vector<std::string>{"/book/1/2/3/4/5", "pen_admin"}, e.GetImplicitRolesForUser("cathy")));
     ASSERT_TRUE(casbin::ArrayEquals(std::vector<std::string>{"/book/1/2/3/4/5", "pen_admin"}, e.GetRolesForUser("cathy")));
 }
 
@@ -232,6 +235,44 @@ TEST(TestRBACAPI, TestImplicitUserAPI) {
     e.AddGroupingPolicy({"alice", "admin"});
 
     ASSERT_TRUE(casbin::ArrayEquals({"alice", "bob", "tom", "john"}, e.GetImplicitUsersForPermission({"data1", "read"})));
+}
+
+TEST(TestRBACAPI, TestRoleManagerPerRoleDefinition) {
+    std::shared_ptr<casbin::Model> model = casbin::Model::NewModelFromString(
+        "[request_definition]\n"
+        "r = sub, obj, act\n"
+        "[policy_definition]\n"
+        "p = sub, obj, act\n"
+        "[role_definition]\n"
+        "g = _, _\n"
+        "g2 = _, _\n"
+        "[policy_effect]\n"
+        "e = some(where (p.eft == allow))\n"
+        "[matchers]\n"
+        "m = g(r.sub, p.sub) && g2(r.obj, p.obj) && r.act == p.act\n");
+    auto adapter = std::make_shared<casbin::StringAdapter>("p, admin, docs, read\ng, bob, admin\ng2, alice, admin\ng2, report, docs");
+    casbin::Enforcer e(model, adapter);
+    e.EnableAutoSave(false);
+
+    ASSERT_TRUE(e.Enforce({"bob", "report", "read"}));
+    ASSERT_FALSE(e.Enforce({"alice", "report", "read"}));
+    ASSERT_FALSE(e.Enforce({"bob", "admin", "read"}));
+    ASSERT_TRUE(casbin::ArrayEquals({}, e.GetRolesForUser("alice")));
+    ASSERT_TRUE(e.GetNamedRoleManager("g2")->HasLink("alice", "admin"));
+    ASSERT_FALSE(e.GetNamedRoleManager("g")->HasLink("alice", "admin"));
+
+    ASSERT_TRUE(e.AddNamedGroupingPolicy("g2", {"carol", "admin"}));
+    ASSERT_FALSE(e.Enforce({"carol", "report", "read"}));
+    ASSERT_TRUE(e.AddNamedGroupingPolicy("g", {"carol", "admin"}));
+    ASSERT_TRUE(e.Enforce({"carol", "report", "read"}));
+    ASSERT_TRUE(e.RemoveNamedGroupingPolicy("g", {"carol", "admin"}));
+    ASSERT_FALSE(e.Enforce({"carol", "report", "read"}));
+    ASSERT_TRUE(e.GetNamedRoleManager("g2")->HasLink("carol", "admin"));
+
+    e.LoadPolicy();
+    ASSERT_TRUE(e.Enforce({"bob", "report", "read"}));
+    ASSERT_FALSE(e.Enforce({"alice", "report", "read"}));
+    ASSERT_FALSE(e.GetNamedRoleManager("g2")->HasLink("carol", "admin"));
 }
 
 } // namespace

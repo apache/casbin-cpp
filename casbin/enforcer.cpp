@@ -342,6 +342,14 @@ void Enforcer::InitWithModelAndAdapter(const std::shared_ptr<Model>& m, std::sha
 
 void Enforcer::Initialize() {
     this->rm = std::make_shared<DefaultRoleManager>(10);
+    m_rm_map.clear();
+    if (m_model && m_model->m.find("g") != m_model->m.end()) {
+        for (auto& [p_type, assertion] : m_model->m["g"].assertion_map) {
+            m_rm_map[p_type] = p_type == "g" ? this->rm : std::make_shared<DefaultRoleManager>(10);
+            if (assertion)
+                assertion->rm = m_rm_map[p_type];
+        }
+    }
     m_eft = std::make_shared<DefaultEffector>();
     m_watcher = nullptr;
     m_evalator = nullptr;
@@ -427,8 +435,40 @@ std::shared_ptr<RoleManager> Enforcer ::GetRoleManager() {
 
 // SetRoleManager sets the current role manager.
 void Enforcer::SetRoleManager(std::shared_ptr<RoleManager>& rm) {
-    this->rm = rm;
+    this->SetNamedRoleManager("g", rm);
+}
+
+// GetNamedRoleManager gets the role manager of the named role definition, or nullptr if it does not exist.
+std::shared_ptr<RoleManager> Enforcer::GetNamedRoleManager(const std::string& p_type) {
+    auto it = m_rm_map.find(p_type);
+    if (it == m_rm_map.end())
+        return nullptr;
+    return it->second;
+}
+
+// SetNamedRoleManager sets the role manager of the named role definition.
+void Enforcer::SetNamedRoleManager(const std::string& p_type, std::shared_ptr<RoleManager>& rm) {
+    if (p_type == "g")
+        this->rm = rm;
+    m_rm_map[p_type] = rm;
+
+    auto sec = m_model->m.find("g");
+    if (sec != m_model->m.end()) {
+        auto assertion = sec->second.assertion_map.find(p_type);
+        if (assertion != sec->second.assertion_map.end() && assertion->second)
+            assertion->second->rm = rm;
+    }
     this->BumpPolicyVersion();
+}
+
+std::shared_ptr<RoleManager>& Enforcer::getNamedRoleManager(const std::string& p_type) {
+    auto it = m_rm_map.find(p_type);
+    if (it != m_rm_map.end())
+        return it->second;
+
+    if (p_type == "g")
+        return m_rm_map[p_type] = this->rm;
+    return m_rm_map[p_type] = std::make_shared<DefaultRoleManager>(10);
 }
 
 // SetEffector sets the current effector.
@@ -440,8 +480,12 @@ void Enforcer::SetEffector(std::shared_ptr<Effector> eft) {
 // ClearPolicy clears all policy.
 void Enforcer::ClearPolicy() {
     m_model->ClearPolicy();
-    if (m_auto_build_role_links && this->rm)
-        this->rm->Clear();
+    if (m_auto_build_role_links) {
+        for (auto& [_, role_manager] : m_rm_map) {
+            if (role_manager)
+                role_manager->Clear();
+        }
+    }
     this->BumpPolicyVersion();
 }
 
@@ -528,15 +572,20 @@ void Enforcer::EnableAutoBuildRoleLinks(bool auto_build_role_links) {
 
 // BuildRoleLinks manually rebuild the role inheritance relations.
 void Enforcer::BuildRoleLinks() {
-    this->rm->Clear();
-
-    m_model->BuildRoleLinks(this->rm);
+    auto sec = m_model->m.find("g");
+    if (sec != m_model->m.end()) {
+        for (auto& [p_type, assertion] : sec->second.assertion_map) {
+            std::shared_ptr<RoleManager>& role_manager = getNamedRoleManager(p_type);
+            role_manager->Clear();
+            assertion->BuildRoleLinks(role_manager);
+        }
+    }
     this->BumpPolicyVersion();
 }
 
 // BuildIncrementalRoleLinks provides incremental build the role inheritance relations.
 void Enforcer::BuildIncrementalRoleLinks(policy_op op, const std::string& p_type, const PoliciesValues& rules) {
-    m_model->BuildIncrementalRoleLinks(this->rm, op, "g", p_type, rules);
+    m_model->BuildIncrementalRoleLinks(getNamedRoleManager(p_type), op, "g", p_type, rules);
     this->BumpPolicyVersion();
 }
 

@@ -335,7 +335,14 @@ bool Enforcer ::UpdateNamedPolicies(const std::string& ptype, const PoliciesValu
 
 // AddNamedMatchingFunc add MatchingFunc by ptype RoleManager
 bool Enforcer ::AddNamedMatchingFunc(const std::string& ptype, const std::string& name, casbin::MatchingFunc func) {
-    auto default_rm = dynamic_cast<casbin::DefaultRoleManager*>(this->rm.get());
+    auto it = m_rm_map.find(ptype);
+    if (it == m_rm_map.end())
+        return false;
+
+    auto default_rm = dynamic_cast<casbin::DefaultRoleManager*>(it->second.get());
+    if (default_rm == nullptr)
+        return false;
+
     default_rm->AddMatchingFunc(func);
     this->BumpPolicyVersion();
 
