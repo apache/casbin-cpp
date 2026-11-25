@@ -129,6 +129,19 @@ TEST(TestEnforcer, TestQuotedPolicy) {
     ASSERT_EQ(e.Enforce({"\"admin\"", "/", "POST"}), false);
 }
 
+TEST(TestEnforcer, TestUnknownPolicyType) {
+    auto adapter = std::make_shared<casbin::StringAdapter>("p, alice, data1, read\np2, bob, data2, write");
+    EXPECT_THROW(std::make_shared<casbin::Enforcer>(basic_model_path, adapter), casbin::CasbinAdapterException);
+
+    adapter = std::make_shared<casbin::StringAdapter>("p, alice, data1, read\n, bob, data2, write");
+    EXPECT_THROW(std::make_shared<casbin::Enforcer>(basic_model_path, adapter), casbin::CasbinAdapterException);
+
+    adapter = std::make_shared<casbin::StringAdapter>("p, alice, data1, read\r\n  \r\n\np, bob, data2, write\r\n");
+    casbin::Enforcer e(basic_model_path, adapter);
+    ASSERT_TRUE(e.Enforce({"alice", "data1", "read"}));
+    ASSERT_TRUE(e.Enforce({"bob", "data2", "write"}));
+}
+
 TEST(TestEnforcer, TestInvalidPatternInMatcher) {
     auto adapter = std::make_shared<casbin::StringAdapter>("p, alice, /data, (read");
     casbin::Enforcer e(keymatch_model_path, adapter);

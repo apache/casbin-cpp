@@ -24,6 +24,7 @@
 #ifndef ADAPTER_CPP
 #define ADAPTER_CPP
 
+#include "casbin/exception/casbin_adapter_exception.h"
 #include "casbin/persist/adapter.h"
 #include "casbin/util/util.h"
 
@@ -67,13 +68,19 @@ void LoadPolicyLine(const std::string& line, const std::shared_ptr<Model>& model
     std::vector<std::string> tokens = SplitPolicyLine(line);
 
     std::string key = tokens[0];
-    std::string sec = key.substr(0, 1);
-    std::vector<std::string> new_tokens(tokens.begin() + 1, tokens.end());
+    if (key.empty())
+        throw CasbinAdapterException("invalid policy rule: missing policy type");
 
-    if (model->m.find(sec) == model->m.end())
-        model->m[sec] = AssertionMap();
+    auto sec_it = model->m.find(key.substr(0, 1));
+    if (sec_it != model->m.end()) {
+        auto ast_it = sec_it->second.assertion_map.find(key);
+        if (ast_it != sec_it->second.assertion_map.end() && ast_it->second) {
+            ast_it->second->policy.emplace(std::vector<std::string>(tokens.begin() + 1, tokens.end()));
+            return;
+        }
+    }
 
-    model->m[sec].assertion_map[key]->policy.emplace(new_tokens);
+    throw CasbinAdapterException("invalid policy rule: unknown policy type " + key);
 }
 
 } // namespace casbin

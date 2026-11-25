@@ -49,7 +49,7 @@ void StringAdapter ::LoadPolicy(const std::shared_ptr<Model>& model) {
 
     std::vector<std::string> strs = Split(this->line, "\n", -1);
     for (int i = 0; i < strs.size(); i++)
-        LoadPolicyLine(strs[i], model);
+        LoadPolicyLine(Trim(strs[i]), model);
 }
 
 // SavePolicy saves all policy rules to the string buffer.
