@@ -27,14 +27,22 @@
 namespace casbin {
 
 // RemoveComments removes the comments starting with # in the text.
+// A # inside a quoted string literal is part of the literal.
 std::string RemoveComments(std::string_view s) {
-    size_t pos = s.find("#");
+    for (size_t i = 0; i < s.size(); i++) {
+        if (s[i] == '#') {
+            std::string fin_str(s.substr(0, i));
+            return Trim(fin_str);
+        }
+        if (s[i] == '"' || s[i] == '\'') {
+            size_t end = s.find(s[i], i + 1);
+            if (end == std::string_view::npos)
+                break;
+            i = end;
+        }
+    }
 
-    if (pos == std::string::npos)
-        return std::string(s);
-
-    std::string fin_str(s.substr(0, pos));
-    return Trim(fin_str);
+    return std::string(s);
 }
 
 } // namespace casbin

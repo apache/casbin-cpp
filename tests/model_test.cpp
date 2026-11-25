@@ -20,6 +20,7 @@
 /* This is a test file for testing built in functions in casbin */
 
 #include <casbin/casbin.h>
+#include <casbin/persist/string_adapter.h>
 #include <gtest/gtest.h>
 
 #include <fstream>
@@ -95,6 +96,23 @@ TEST(TestModel, TestModel_AddDef) {
 
     ok = model->AddDef(s, s, "");
     ASSERT_FALSE(ok);
+}
+
+TEST(TestModel, TestCommentInQuotedMatcherString) {
+    std::shared_ptr<casbin::Model> model = casbin::Model::NewModelFromString(
+        "[request_definition]\n"
+        "r = sub, obj, act\n"
+        "[policy_definition]\n"
+        "p = sub, obj, act\n"
+        "[policy_effect]\n"
+        "e = some(where (p.eft == allow))\n"
+        "[matchers]\n"
+        "m = r.sub == \"a#b\" && r.obj == p.obj && r.act == p.act # comment\n");
+    ASSERT_EQ(model->m["m"].assertion_map["m"]->value, "r.sub == \"a#b\" && r.obj == p.obj && r.act == p.act");
+
+    casbin::Enforcer e(model, std::make_shared<casbin::StringAdapter>("p, any, data1, read"));
+    ASSERT_TRUE(e.Enforce({"a#b", "data1", "read"}));
+    ASSERT_FALSE(e.Enforce({"a", "data1", "read"}));
 }
 
 } // namespace
