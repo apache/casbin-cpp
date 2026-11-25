@@ -36,16 +36,13 @@ class TestCachedEnforcer(unittest.TestCase):
         self.assertEqual(self.e.Enforce(["alice", "data2", "read"]), False)
         self.assertEqual(self.e.Enforce(["alice", "data2", "write"]), False)
 
-        # The cache is enabled, so even if we remove a policy rule, the decision
-        # for ("alice", "data1", "read") will still be true, as it uses the cached result.
+        # A policy change drops the cached decisions.
         self.e.RemovePolicy(["alice", "data1", "read"])
-        self.assertEqual(self.e.Enforce(["alice", "data1", "read"]), True)
+        self.assertEqual(self.e.Enforce(["alice", "data1", "read"]), False)
         self.assertEqual(self.e.Enforce(["alice", "data1", "write"]), False)
         self.assertEqual(self.e.Enforce(["alice", "data2", "read"]), False)
         self.assertEqual(self.e.Enforce(["alice", "data2", "write"]), False)
 
-        # Now we invalidate the cache, then all first-coming Enforce() has to be evaluated in real-time.
-        # The decision for ("alice", "data1", "read") will be False now.
         self.e.InvalidateCache()
         self.assertEqual(self.e.Enforce(["alice", "data1", "read"]), False)
         self.assertEqual(self.e.Enforce(["alice", "data1", "write"]), False)
