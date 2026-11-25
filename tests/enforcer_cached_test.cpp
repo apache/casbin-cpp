@@ -75,4 +75,24 @@ TEST(TestEnforcerCached, TestCacheInvalidatedOnPolicyChange) {
     ASSERT_FALSE(e.Enforce({"alice", "data1", "read"}));
 }
 
+TEST(TestEnforcerCached, TestCacheKeyCollision) {
+    casbin::CachedEnforcer e(basic_model_path, basic_policy_path);
+    e.AddPolicy({"alice", "data1$$read", "x"});
+    ASSERT_TRUE(e.Enforce({"alice", "data1$$read", "x"}));
+    ASSERT_FALSE(e.Enforce({"alice", "data1", "read$$x"}));
+    ASSERT_TRUE(e.Enforce(casbin::DataVector{"alice", "data1", "read"}));
+    ASSERT_FALSE(e.Enforce(casbin::DataVector{"alice", "data1", "write"}));
+}
+
+TEST(TestEnforcerCached, TestCacheWithJsonData) {
+    using json = nlohmann::json;
+    casbin::CachedEnforcer e(abac_rule_model_path, abac_rule_policy_path);
+
+    casbin::DataMap params = {{"sub", std::make_shared<json>(json{{"Name", "alice"}, {"Age", 30}})}, {"obj", "/data1"}, {"act", "read"}};
+    ASSERT_TRUE(e.Enforce(params));
+
+    params = {{"sub", std::make_shared<json>(json{{"Name", "bob"}, {"Age", 16}})}, {"obj", "/data1"}, {"act", "read"}};
+    ASSERT_FALSE(e.Enforce(params));
+}
+
 } // namespace

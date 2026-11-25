@@ -22,6 +22,8 @@
 #ifndef ENFORCER_CACHED_CPP
 #define ENFORCER_CACHED_CPP
 
+#include <algorithm>
+
 #include "casbin/effect/default_effector.h"
 #include "casbin/enforcer_cached.h"
 #include "casbin/exception/casbin_adapter_exception.h"
@@ -32,6 +34,47 @@
 #include "casbin/util/util.h"
 
 namespace casbin {
+
+namespace {
+
+// AppendCacheKeyPart length-prefixes each part so that different requests never share a key.
+void AppendCacheKeyPart(std::string& key, const std::string& part) {
+    key += std::to_string(part.size());
+    key += ':';
+    key += part;
+}
+
+// GetCacheKey returns false when a parameter is not a string, such a request is not cached.
+template <typename Params>
+bool GetCacheKey(const std::string& matcher, const Params& params, std::string& key) {
+    AppendCacheKeyPart(key, matcher);
+    for (const auto& param : params) {
+        const auto string_param = std::get_if<std::string>(&param);
+        if (string_param == nullptr)
+            return false;
+        AppendCacheKeyPart(key, *string_param);
+    }
+    return true;
+}
+
+bool GetCacheKey(const std::string& matcher, const DataMap& params, std::string& key) {
+    std::vector<std::string> names;
+    for (const auto& [name, _] : params)
+        names.push_back(name);
+    std::sort(names.begin(), names.end());
+
+    AppendCacheKeyPart(key, matcher);
+    for (const std::string& name : names) {
+        const auto string_param = std::get_if<std::string>(&params.at(name));
+        if (string_param == nullptr)
+            return false;
+        AppendCacheKeyPart(key, name);
+        AppendCacheKeyPart(key, *string_param);
+    }
+    return true;
+}
+
+} // namespace
 
 /**
  * Enforcer is the default constructor.
@@ -212,18 +255,9 @@ bool CachedEnforcer ::EnforceWithMatcher(const std::string& matcher, std::shared
 // access a "object" with the operation "action", input parameters are usually:
 // (matcher, sub, obj, act), use model matcher by default when matcher is "".
 bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataVector& params) {
-    if (!enableCache) {
-        return Enforcer::EnforceWithMatcher(matcher, params);
-    }
-
     std::string key;
-    for (const auto& r : params) {
-        if (const auto string_param = std::get_if<std::string>(&r))
-            key += *string_param;
-        key += "$$";
-    }
-    key += matcher;
-    key += "$";
+    if (!enableCache || !GetCacheKey(matcher, params, key))
+        return Enforcer::EnforceWithMatcher(matcher, params);
 
     return enforceWithCache(key, [&] { return Enforcer::EnforceWithMatcher(matcher, params); });
 }
@@ -232,18 +266,9 @@ bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataVe
 // access a "object" with the operation "action", input parameters are usually:
 // (matcher, sub, obj, act), use model matcher by default when matcher is "".
 bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataList& params) {
-    if (!enableCache) {
-        return Enforcer::EnforceWithMatcher(matcher, params);
-    }
-
     std::string key;
-    for (const auto& r : params) {
-        if (const auto string_param = std::get_if<std::string>(&r))
-            key += *string_param;
-        key += "$$";
-    }
-    key += matcher;
-    key += "$";
+    if (!enableCache || !GetCacheKey(matcher, params, key))
+        return Enforcer::EnforceWithMatcher(matcher, params);
 
     return enforceWithCache(key, [&] { return Enforcer::EnforceWithMatcher(matcher, params); });
 }
@@ -252,18 +277,9 @@ bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataLi
 // access a "object" with the operation "action", input parameters are usually:
 // (matcher, sub, obj, act), use model matcher by default when matcher is "".
 bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataMap& params) {
-    if (!enableCache) {
-        return Enforcer::EnforceWithMatcher(matcher, params);
-    }
-
     std::string key;
-    for (auto [param_name, param_value] : params) {
-        if (const auto string_value = std::get_if<std::string>(&param_value))
-            key += *string_value;
-        key += "$$";
-    }
-    key += matcher;
-    key += "$";
+    if (!enableCache || !GetCacheKey(matcher, params, key))
+        return Enforcer::EnforceWithMatcher(matcher, params);
 
     return enforceWithCache(key, [&] { return Enforcer::EnforceWithMatcher(matcher, params); });
 }
