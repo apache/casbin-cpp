@@ -20,6 +20,8 @@
 #ifndef CASBIN_CPP_ENFORCER
 #define CASBIN_CPP_ENFORCER
 
+#include <atomic>
+#include <cstdint>
 #include <tuple>
 #include <vector>
 
@@ -32,9 +34,28 @@
 
 namespace casbin {
 
+// PolicyVersion counts the changes that decisions depend on: policy rules, role links and the enforcing state.
+class PolicyVersion {
+public:
+    PolicyVersion() = default;
+    PolicyVersion(const PolicyVersion& other) : value(other.Load()) {}
+    PolicyVersion& operator=(const PolicyVersion& other) {
+        value.store(other.Load());
+        return *this;
+    }
+
+    uint64_t Load() const { return value.load(); }
+    void Bump() { value.fetch_add(1); }
+
+private:
+    std::atomic<uint64_t> value{0};
+};
+
 // Enforcer is the main interface for authorization enforcement and policy management.
 class Enforcer : public IEnforcer {
 private:
+    PolicyVersion m_policy_version;
+
     std::string m_model_path;
     std::shared_ptr<Model> m_model;
     std::shared_ptr<Effector> m_eft;
@@ -53,6 +74,12 @@ private:
     // with the operation "action", input parameters are usually: (matcher, sub, obj, act),
     // use model matcher by default when matcher is "".
     bool m_enforce(const std::string& matcher, std::vector<std::string>& explains, std::shared_ptr<IEvaluator> evalator) override;
+
+protected:
+    // GetPolicyVersion returns the version of the policy, which changes after every change of the policy.
+    uint64_t GetPolicyVersion() const;
+
+    void BumpPolicyVersion();
 
 public:
     std::shared_ptr<RoleManager> rm;

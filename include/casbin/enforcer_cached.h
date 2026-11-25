@@ -20,6 +20,7 @@
 #ifndef CASBIN_CPP_ENFORCER_CACHED
 #define CASBIN_CPP_ENFORCER_CACHED
 
+#include <functional>
 #include <mutex>
 
 #include "casbin/enforcer.h"
@@ -27,6 +28,14 @@
 namespace casbin {
 
 class CachedEnforcer : public Enforcer {
+private:
+    // cacheVersion is the policy version that the cached decisions were made with.
+    uint64_t cacheVersion = 0;
+
+    void syncCacheVersion(uint64_t version);
+    void setCachedResult(uint64_t version, const std::string& key, bool res);
+    bool enforceWithCache(const std::string& key, const std::function<bool()>& enforce);
+
 public:
     std::unordered_map<std::string, bool> m;
     bool enableCache;

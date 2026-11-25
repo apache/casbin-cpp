@@ -33,21 +33,46 @@ TEST(TestEnforcerCached, TestCache) {
     ASSERT_EQ(e.Enforce({"alice", "data2", "read"}), false);
     ASSERT_EQ(e.Enforce({"alice", "data2", "write"}), false);
 
-    // The cache is enabled, so even if we remove a policy rule, the decision
-    // for ("alice", "data1", "read") will still be true, as it uses the cached result.
+    // A policy change drops the cached decisions.
     e.RemovePolicy({"alice", "data1", "read"});
-    ASSERT_EQ(e.Enforce({"alice", "data1", "read"}), true);
+    ASSERT_EQ(e.Enforce({"alice", "data1", "read"}), false);
     ASSERT_EQ(e.Enforce({"alice", "data1", "write"}), false);
     ASSERT_EQ(e.Enforce({"alice", "data2", "read"}), false);
     ASSERT_EQ(e.Enforce({"alice", "data2", "write"}), false);
 
-    // Now we invalidate the cache, then all first-coming Enforce() has to be evaluated in real-time.
-    // The decision for ("alice", "data1", "read") will be false now.
     e.InvalidateCache();
     ASSERT_EQ(e.Enforce({"alice", "data1", "read"}), false);
     ASSERT_EQ(e.Enforce({"alice", "data1", "write"}), false);
     ASSERT_EQ(e.Enforce({"alice", "data2", "read"}), false);
     ASSERT_EQ(e.Enforce({"alice", "data2", "write"}), false);
+}
+
+TEST(TestEnforcerCached, TestCacheInvalidatedOnPolicyChange) {
+    casbin::CachedEnforcer e(rbac_model_path, rbac_policy_path);
+    ASSERT_TRUE(e.Enforce({"alice", "data2", "read"}));
+
+    e.RemoveGroupingPolicy({"alice", "data2_admin"});
+    ASSERT_FALSE(e.Enforce({"alice", "data2", "read"}));
+
+    e.AddGroupingPolicy({"alice", "data2_admin"});
+    ASSERT_TRUE(e.Enforce({"alice", "data2", "read"}));
+
+    e.DeleteRoleForUser("alice", "data2_admin");
+    ASSERT_FALSE(e.Enforce({"alice", "data2", "read"}));
+
+    e.AddPolicy({"alice", "data2", "read"});
+    ASSERT_TRUE(e.Enforce({"alice", "data2", "read"}));
+
+    e.UpdatePolicy({"alice", "data2", "read"}, {"alice", "data3", "read"});
+    ASSERT_FALSE(e.Enforce({"alice", "data2", "read"}));
+
+    e.ClearPolicy();
+    ASSERT_FALSE(e.Enforce({"alice", "data3", "read"}));
+
+    e.LoadPolicy();
+    ASSERT_TRUE(e.Enforce({"alice", "data1", "read"}));
+    e.RemoveFilteredPolicy(0, {"alice"});
+    ASSERT_FALSE(e.Enforce({"alice", "data1", "read"}));
 }
 
 } // namespace

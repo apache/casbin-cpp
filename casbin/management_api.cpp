@@ -337,6 +337,7 @@ bool Enforcer ::UpdateNamedPolicies(const std::string& ptype, const PoliciesValu
 bool Enforcer ::AddNamedMatchingFunc(const std::string& ptype, const std::string& name, casbin::MatchingFunc func) {
     auto default_rm = dynamic_cast<casbin::DefaultRoleManager*>(this->rm.get());
     default_rm->AddMatchingFunc(func);
+    this->BumpPolicyVersion();
 
     return true;
 }

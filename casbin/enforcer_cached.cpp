@@ -109,12 +109,14 @@ CachedEnforcer::CachedEnforcer(const CachedEnforcer& ce)
     : Enforcer(ce) {
     this->m = ce.m;
     this->enableCache = ce.enableCache;
+    this->cacheVersion = ce.cacheVersion;
 }
 
 CachedEnforcer::CachedEnforcer(CachedEnforcer&& ce) noexcept
     : Enforcer(ce) {
     this->m = std::move(ce.m);
     this->enableCache = ce.enableCache;
+    this->cacheVersion = ce.cacheVersion;
 }
 
 void CachedEnforcer::EnableCache(const bool& shouldEnableCache) {
@@ -141,7 +143,40 @@ void CachedEnforcer::setCachedResult(const std::string& key, const bool& res) {
 }
 
 void CachedEnforcer::InvalidateCache() {
+    std::lock_guard<std::mutex> lock(locker);
     m.clear();
+}
+
+// syncCacheVersion drops all cached decisions when the policy has changed since they were cached.
+void CachedEnforcer::syncCacheVersion(uint64_t version) {
+    std::lock_guard<std::mutex> lock(locker);
+    if (version <= cacheVersion)
+        return;
+
+    m.clear();
+    cacheVersion = version;
+}
+
+// setCachedResult caches a decision unless the policy has changed since the decision was started.
+void CachedEnforcer::setCachedResult(uint64_t version, const std::string& key, bool res) {
+    std::lock_guard<std::mutex> lock(locker);
+    if (version != cacheVersion)
+        return;
+
+    m[key] = res;
+}
+
+bool CachedEnforcer::enforceWithCache(const std::string& key, const std::function<bool()>& enforce) {
+    uint64_t version = GetPolicyVersion();
+    syncCacheVersion(version);
+
+    std::pair<bool, bool> res_ok = getCachedResult(key);
+    if (res_ok.second)
+        return res_ok.first;
+
+    bool res = enforce();
+    setCachedResult(version, key, res);
+    return res;
 }
 
 // Enforce decides whether a "subject" can access a "object" with the operation
@@ -190,15 +225,7 @@ bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataVe
     key += matcher;
     key += "$";
 
-    std::pair<bool, bool> res_ok = getCachedResult(key);
-
-    if (res_ok.second) {
-        return res_ok.first;
-    }
-
-    bool res = Enforcer::EnforceWithMatcher(matcher, params);
-    setCachedResult(key, res);
-    return res;
+    return enforceWithCache(key, [&] { return Enforcer::EnforceWithMatcher(matcher, params); });
 }
 
 // EnforceWithMatcher use a custom matcher to decides whether a "subject" can
@@ -218,15 +245,7 @@ bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataLi
     key += matcher;
     key += "$";
 
-    std::pair<bool, bool> res_ok = getCachedResult(key);
-
-    if (res_ok.second) {
-        return res_ok.first;
-    }
-
-    bool res = Enforcer::EnforceWithMatcher(matcher, params);
-    setCachedResult(key, res);
-    return res;
+    return enforceWithCache(key, [&] { return Enforcer::EnforceWithMatcher(matcher, params); });
 }
 
 // EnforceWithMatcher use a custom matcher to decides whether a "subject" can
@@ -246,15 +265,7 @@ bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataMa
     key += matcher;
     key += "$";
 
-    std::pair<bool, bool> res_ok = getCachedResult(key);
-
-    if (res_ok.second) {
-        return res_ok.first;
-    }
-
-    bool res = Enforcer::EnforceWithMatcher(matcher, params);
-    setCachedResult(key, res);
-    return res;
+    return enforceWithCache(key, [&] { return Enforcer::EnforceWithMatcher(matcher, params); });
 }
 
 } // namespace casbin

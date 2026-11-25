@@ -350,6 +350,16 @@ void Enforcer::Initialize() {
     m_auto_save = true;
     m_auto_build_role_links = true;
     m_auto_notify_watcher = true;
+
+    this->BumpPolicyVersion();
+}
+
+uint64_t Enforcer::GetPolicyVersion() const {
+    return m_policy_version.Load();
+}
+
+void Enforcer::BumpPolicyVersion() {
+    m_policy_version.Bump();
 }
 
 /**
@@ -414,11 +424,13 @@ std::shared_ptr<RoleManager> Enforcer ::GetRoleManager() {
 // SetRoleManager sets the current role manager.
 void Enforcer::SetRoleManager(std::shared_ptr<RoleManager>& rm) {
     this->rm = rm;
+    this->BumpPolicyVersion();
 }
 
 // SetEffector sets the current effector.
 void Enforcer::SetEffector(std::shared_ptr<Effector> eft) {
     m_eft = eft;
+    this->BumpPolicyVersion();
 }
 
 // ClearPolicy clears all policy.
@@ -426,6 +438,7 @@ void Enforcer::ClearPolicy() {
     m_model->ClearPolicy();
     if (m_auto_build_role_links && this->rm)
         this->rm->Clear();
+    this->BumpPolicyVersion();
 }
 
 // LoadPolicy reloads the policy from file/database.
@@ -438,6 +451,7 @@ void Enforcer::LoadPolicy() {
     if (m_auto_build_role_links) {
         Enforcer::BuildRoleLinks();
     }
+    this->BumpPolicyVersion();
 }
 
 // LoadFilteredPolicy reloads a filtered policy from file/database.
@@ -457,6 +471,7 @@ void Enforcer::LoadFilteredPolicy(Filter filter) {
     m_model->PrintPolicy();
     if (m_auto_build_role_links)
         this->BuildRoleLinks();
+    this->BumpPolicyVersion();
 }
 
 // IsFiltered returns true if the loaded policy has been filtered.
@@ -511,11 +526,13 @@ void Enforcer::BuildRoleLinks() {
     this->rm->Clear();
 
     m_model->BuildRoleLinks(this->rm);
+    this->BumpPolicyVersion();
 }
 
 // BuildIncrementalRoleLinks provides incremental build the role inheritance relations.
 void Enforcer::BuildIncrementalRoleLinks(policy_op op, const std::string& p_type, const PoliciesValues& rules) {
-    return m_model->BuildIncrementalRoleLinks(this->rm, op, "g", p_type, rules);
+    m_model->BuildIncrementalRoleLinks(this->rm, op, "g", p_type, rules);
+    this->BumpPolicyVersion();
 }
 
 // Enforce decides whether a "subject" can access a "object" with the operation "action",

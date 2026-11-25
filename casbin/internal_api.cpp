@@ -31,8 +31,27 @@
 
 namespace casbin {
 
+namespace {
+
+// OnExit runs fn when it goes out of scope.
+template <typename Fn>
+class OnExit {
+public:
+    explicit OnExit(Fn fn) : fn_(std::move(fn)) {}
+    ~OnExit() { fn_(); }
+    OnExit(const OnExit&) = delete;
+    OnExit& operator=(const OnExit&) = delete;
+
+private:
+    Fn fn_;
+};
+
+} // namespace
+
 // addPolicy adds a rule to the current policy.
 bool Enforcer::addPolicy(const std::string& sec, const std::string& p_type, const std::vector<std::string>& rule) {
+    OnExit bump_policy_version([this] { this->BumpPolicyVersion(); });
+
     bool rule_added = m_model->AddPolicy(sec, p_type, rule);
     if (!rule_added)
         return rule_added;
@@ -61,6 +80,8 @@ bool Enforcer::addPolicy(const std::string& sec, const std::string& p_type, cons
 
 // addPolicies adds rules to the current policy.
 bool Enforcer::addPolicies(const std::string& sec, const std::string& p_type, const PoliciesValues& rules) {
+    OnExit bump_policy_version([this] { this->BumpPolicyVersion(); });
+
     bool rules_added = m_model->AddPolicies(sec, p_type, rules);
     if (!rules_added)
         return rules_added;
@@ -83,6 +104,8 @@ bool Enforcer::addPolicies(const std::string& sec, const std::string& p_type, co
 
 // removePolicy removes a rule from the current policy.
 bool Enforcer::removePolicy(const std::string& sec, const std::string& p_type, const std::vector<std::string>& rule) {
+    OnExit bump_policy_version([this] { this->BumpPolicyVersion(); });
+
     bool rule_removed = m_model->RemovePolicy(sec, p_type, rule);
     if (!rule_removed)
         return rule_removed;
@@ -111,6 +134,8 @@ bool Enforcer::removePolicy(const std::string& sec, const std::string& p_type, c
 
 // removePolicies removes rules from the current policy.
 bool Enforcer::removePolicies(const std::string& sec, const std::string& p_type, const PoliciesValues& rules) {
+    OnExit bump_policy_version([this] { this->BumpPolicyVersion(); });
+
     bool rules_removed = m_model->RemovePolicies(sec, p_type, rules);
     if (!rules_removed)
         return rules_removed;
@@ -133,6 +158,8 @@ bool Enforcer::removePolicies(const std::string& sec, const std::string& p_type,
 
 // removeFilteredPolicy removes rules based on field filters from the current policy.
 bool Enforcer::removeFilteredPolicy(const std::string& sec, const std::string& p_type, int field_index, const std::vector<std::string>& field_values) {
+    OnExit bump_policy_version([this] { this->BumpPolicyVersion(); });
+
     std::pair<int, PoliciesValues> p = m_model->RemoveFilteredPolicy(sec, p_type, field_index, field_values);
     bool rule_removed = p.first;
     PoliciesValues effects = p.second;
@@ -161,6 +188,8 @@ bool Enforcer::removeFilteredPolicy(const std::string& sec, const std::string& p
 }
 
 bool Enforcer::updatePolicy(const std::string& sec, const std::string& p_type, const std::vector<std::string>& oldRule, const std::vector<std::string>& newRule) {
+    OnExit bump_policy_version([this] { this->BumpPolicyVersion(); });
+
     bool is_rule_updated = m_model->UpdatePolicy(sec, p_type, oldRule, newRule);
     if (!is_rule_updated)
         return false;
@@ -180,6 +209,8 @@ bool Enforcer::updatePolicy(const std::string& sec, const std::string& p_type, c
 }
 
 bool Enforcer::updatePolicies(const std::string& sec, const std::string& p_type, const PoliciesValues& oldRules, const PoliciesValues& newRules) {
+    OnExit bump_policy_version([this] { this->BumpPolicyVersion(); });
+
     bool is_rules_updated = m_model->UpdatePolicies(sec, p_type, oldRules, newRules);
     if (!is_rules_updated)
         return false;
