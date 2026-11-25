@@ -293,4 +293,13 @@ TEST(TestManagementAPI, TestRuleFieldOrder) {
     ASSERT_TRUE(e.HasPolicy({"alice", "data1", "read"}));
 }
 
+TEST(TestManagementAPI, TestPoliciesWithoutBatchAdapter) {
+    casbin::Enforcer e(basic_model_path, std::make_shared<casbin::FileAdapter>(basic_policy_path));
+
+    ASSERT_TRUE(e.AddPolicies(PoliciesValues({{"eve", "data3", "read"}, {"eve", "data4", "read"}})));
+    ASSERT_TRUE(e.Enforce({"eve", "data3", "read"}));
+    ASSERT_TRUE(e.RemovePolicies(PoliciesValues({{"eve", "data3", "read"}, {"eve", "data4", "read"}})));
+    ASSERT_FALSE(e.Enforce({"eve", "data3", "read"}));
+}
+
 } // namespace

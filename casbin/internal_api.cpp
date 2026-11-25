@@ -91,7 +91,12 @@ bool Enforcer::addPolicies(const std::string& sec, const std::string& p_type, co
 
     if (m_adapter && m_auto_save) {
         try {
-            std::dynamic_pointer_cast<BatchAdapter>(m_adapter)->AddPolicies(sec, p_type, rules);
+            if (auto batch_adapter = std::dynamic_pointer_cast<BatchAdapter>(m_adapter)) {
+                batch_adapter->AddPolicies(sec, p_type, rules);
+            } else {
+                for (const std::vector<std::string>& rule : rules)
+                    m_adapter->AddPolicy(sec, p_type, rule);
+            }
         } catch (UnsupportedOperationException e) {
         }
     }
@@ -145,7 +150,12 @@ bool Enforcer::removePolicies(const std::string& sec, const std::string& p_type,
 
     if (m_adapter && m_auto_save) {
         try {
-            std::dynamic_pointer_cast<BatchAdapter>(m_adapter)->RemovePolicies(sec, p_type, rules);
+            if (auto batch_adapter = std::dynamic_pointer_cast<BatchAdapter>(m_adapter)) {
+                batch_adapter->RemovePolicies(sec, p_type, rules);
+            } else {
+                for (const std::vector<std::string>& rule : rules)
+                    m_adapter->RemovePolicy(sec, p_type, rule);
+            }
         } catch (UnsupportedOperationException e) {
         }
     }
