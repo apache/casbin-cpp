@@ -278,4 +278,19 @@ TEST(TestManagementAPI, TestClearPolicyRemovesRoleLinks) {
     ASSERT_FALSE(e.Enforce({"alice", "data2", "read"}));
 }
 
+TEST(TestManagementAPI, TestRuleFieldOrder) {
+    casbin::Enforcer e(basic_model_path, basic_policy_path);
+
+    ASSERT_FALSE(e.HasPolicy({"data1", "alice", "read"}));
+    ASSERT_FALSE(e.RemovePolicy({"read", "data1", "alice"}));
+    ASSERT_TRUE(e.HasPolicy({"alice", "data1", "read"}));
+    ASSERT_TRUE(e.Enforce({"alice", "data1", "read"}));
+
+    ASSERT_TRUE(e.AddPolicy({"data1", "alice", "read"}));
+    ASSERT_TRUE(e.HasPolicy({"data1", "alice", "read"}));
+    ASSERT_FALSE(e.UpdatePolicy({"data1", "read", "alice"}, {"bob", "data1", "read"}));
+    ASSERT_TRUE(e.RemovePolicies(PoliciesValues({{"data1", "alice", "read"}})));
+    ASSERT_TRUE(e.HasPolicy({"alice", "data1", "read"}));
+}
+
 } // namespace

@@ -270,7 +270,7 @@ PoliciesValues Model::GetFilteredPolicy(const std::string& sec, const std::strin
 bool Model::HasPolicy(const std::string& sec, const std::string& p_type, const std::vector<std::string>& rule) {
     auto& policy = this->m[sec].assertion_map[p_type]->policy;
     for (const std::vector<std::string>& policy_it : policy)
-        if (ArrayEquals(rule, policy_it))
+        if (rule == policy_it)
             return true;
 
     return false;
@@ -306,7 +306,7 @@ bool Model::UpdatePolicy(const std::string& sec, const std::string& p_type, cons
     bool is_oldRule_deleted = false, is_newRule_added = false;
 
     for (auto it = policy.begin(); it != policy.end(); ++it) {
-        if (ArrayEquals(oldRule, *it)) {
+        if (oldRule == *it) {
             policy.erase(it);
             is_oldRule_deleted = true;
             break;
@@ -337,7 +337,7 @@ bool Model::UpdatePolicies(const std::string& sec, const std::string& p_type, co
     for (const std::vector<std::string>& oldRule : oldRules) {
         is_oldRule_deleted = false;
         for (auto it = policy.begin(); it != policy.end(); ++it) {
-            if (ArrayEquals(oldRule, *it)) {
+            if (oldRule == *it) {
                 policy.erase(it);
                 is_oldRule_deleted = true;
                 break;
@@ -367,7 +367,7 @@ bool Model::RemovePolicy(const std::string& sec, const std::string& p_type, cons
     // Caching policy by reference for the scope of this function
     auto& policy = m[sec].assertion_map[p_type]->policy;
     for (auto it = policy.begin(); it != policy.end(); ++it) {
-        if (ArrayEquals(rule, *it)) {
+        if (rule == *it) {
             policy.erase(it);
             return true;
         }
@@ -384,7 +384,7 @@ bool Model::RemovePolicies(const std::string& sec, const std::string& p_type, co
     for (const std::vector<std::string>& rule : rules) {
         is_equal = false;
         for (const std::vector<std::string>& policy_it : policy) {
-            if (ArrayEquals(rule, policy_it))
+            if (rule == policy_it)
                 is_equal = true;
         }
         if (!is_equal)
@@ -393,7 +393,7 @@ bool Model::RemovePolicies(const std::string& sec, const std::string& p_type, co
 
     for (const std::vector<std::string>& rule : rules) {
         for (auto policy_it = policy.begin(); policy_it != policy.end(); ++policy_it) {
-            if (ArrayEquals(rule, *policy_it)) {
+            if (rule == *policy_it) {
                 policy.erase(policy_it);
                 break;
             }
