@@ -24,6 +24,43 @@
 #include "casbin/util/util.h"
 
 namespace casbin {
+
+namespace {
+
+// PrepareExpression rewrites a matcher for ExprTk: && and || become and and or, and string literals are written in
+// single quotes. The content of string literals is kept unchanged.
+std::string PrepareExpression(const std::string& s) {
+    std::string res;
+    for (size_t i = 0; i < s.size(); i++) {
+        char c = s[i];
+        if (c == '"' || c == '\'') {
+            res += '\'';
+            size_t j = i + 1;
+            for (; j < s.size() && s[j] != c; j++) {
+                if (s[j] == '\\' && j + 1 < s.size()) {
+                    res += s[j];
+                    res += s[++j];
+                    continue;
+                }
+                if (s[j] == '\'')
+                    res += '\\';
+                res += s[j];
+            }
+            if (j < s.size())
+                res += '\'';
+            i = j;
+        } else if ((c == '&' || c == '|') && i + 1 < s.size() && s[i + 1] == c) {
+            res += c == '&' ? " and " : " or ";
+            i++;
+        } else {
+            res += c;
+        }
+    }
+    return res;
+}
+
+} // namespace
+
 bool ExprtkEvaluator::Eval(const std::string& expression_string) {
     expression.register_symbol_table(symbol_table);
     if (enable_get) {
@@ -32,13 +69,7 @@ bool ExprtkEvaluator::Eval(const std::string& expression_string) {
 
     if (this->expression_string_ != expression_string) {
         this->expression_string_ = expression_string;
-        // replace (&& -> and), (|| -> or)
-        auto replaced_string = std::regex_replace(expression_string, std::regex("&&"), "and");
-        replaced_string = std::regex_replace(replaced_string, std::regex("\\|{2}"), "or");
-        // replace string "" -> ''
-        replaced_string = std::regex_replace(replaced_string, std::regex("\""), "\'");
-
-        return parser.compile(replaced_string, expression);
+        return parser.compile(PrepareExpression(expression_string), expression);
     }
 
     return this->parser.error_count() == 0;

@@ -589,4 +589,24 @@ TEST(TestEnforcerEx, TestMapParams) {
 //     ASSERT_TRUE(!EvalAndGetTop(scope, s6));
 // }
 
+TEST(TestEnforcer, TestOperatorsInStringLiterals) {
+    std::shared_ptr<casbin::Model> model = casbin::Model::NewModelFromString(
+        "[request_definition]\n"
+        "r = sub, obj, act\n"
+        "[policy_definition]\n"
+        "p = sub, obj, act\n"
+        "[policy_effect]\n"
+        "e = some(where (p.eft == allow))\n"
+        "[matchers]\n"
+        "m = (r.sub == \"a&&b\" || r.sub == \"c||d\" || r.sub == \"it's\") && r.obj == p.obj&&r.act == p.act\n");
+    casbin::Enforcer e(model, std::make_shared<casbin::StringAdapter>("p, any, data1, read"));
+
+    ASSERT_TRUE(e.Enforce({"a&&b", "data1", "read"}));
+    ASSERT_TRUE(e.Enforce({"c||d", "data1", "read"}));
+    ASSERT_TRUE(e.Enforce({"it's", "data1", "read"}));
+    ASSERT_FALSE(e.Enforce({"aandb", "data1", "read"}));
+    ASSERT_FALSE(e.Enforce({"cord", "data1", "read"}));
+    ASSERT_FALSE(e.Enforce({"a&&b", "data1", "write"}));
+}
+
 } // namespace
