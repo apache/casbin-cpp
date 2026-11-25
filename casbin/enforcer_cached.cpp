@@ -256,7 +256,7 @@ bool CachedEnforcer ::EnforceWithMatcher(const std::string& matcher, std::shared
 // (matcher, sub, obj, act), use model matcher by default when matcher is "".
 bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataVector& params) {
     std::string key;
-    if (!enableCache || !GetCacheKey(matcher, params, key))
+    if (!enableCache || !IsEnforceEnabled() || !GetCacheKey(matcher, params, key))
         return Enforcer::EnforceWithMatcher(matcher, params);
 
     return enforceWithCache(key, [&] { return Enforcer::EnforceWithMatcher(matcher, params); });
@@ -267,7 +267,7 @@ bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataVe
 // (matcher, sub, obj, act), use model matcher by default when matcher is "".
 bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataList& params) {
     std::string key;
-    if (!enableCache || !GetCacheKey(matcher, params, key))
+    if (!enableCache || !IsEnforceEnabled() || !GetCacheKey(matcher, params, key))
         return Enforcer::EnforceWithMatcher(matcher, params);
 
     return enforceWithCache(key, [&] { return Enforcer::EnforceWithMatcher(matcher, params); });
@@ -278,7 +278,7 @@ bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataLi
 // (matcher, sub, obj, act), use model matcher by default when matcher is "".
 bool CachedEnforcer::EnforceWithMatcher(const std::string& matcher, const DataMap& params) {
     std::string key;
-    if (!enableCache || !GetCacheKey(matcher, params, key))
+    if (!enableCache || !IsEnforceEnabled() || !GetCacheKey(matcher, params, key))
         return Enforcer::EnforceWithMatcher(matcher, params);
 
     return enforceWithCache(key, [&] { return Enforcer::EnforceWithMatcher(matcher, params); });

@@ -81,6 +81,8 @@ protected:
 
     void BumpPolicyVersion();
 
+    bool IsEnforceEnabled() const;
+
 public:
     std::shared_ptr<RoleManager> rm;
 

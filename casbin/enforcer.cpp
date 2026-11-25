@@ -362,6 +362,10 @@ void Enforcer::BumpPolicyVersion() {
     m_policy_version.Bump();
 }
 
+bool Enforcer::IsEnforceEnabled() const {
+    return m_enabled;
+}
+
 /**
  * Destructor of Enforcer
  *
@@ -499,6 +503,7 @@ void Enforcer::SavePolicy() {
 // all access will be allowed by the Enforce() function.
 void Enforcer::EnableEnforce(bool enable) {
     m_enabled = enable;
+    this->BumpPolicyVersion();
 }
 
 // EnableLog changes whether Casbin will log messages to the Logger.

@@ -75,6 +75,19 @@ TEST(TestEnforcerCached, TestCacheInvalidatedOnPolicyChange) {
     ASSERT_FALSE(e.Enforce({"alice", "data1", "read"}));
 }
 
+TEST(TestEnforcerCached, TestCacheWithEnableEnforce) {
+    casbin::CachedEnforcer e(basic_model_path, basic_policy_path);
+    ASSERT_FALSE(e.Enforce({"bob", "data1", "read"}));
+
+    e.EnableEnforce(false);
+    ASSERT_TRUE(e.Enforce({"bob", "data1", "read"}));
+    ASSERT_TRUE(e.Enforce({"bob", "data2", "read"}));
+
+    e.EnableEnforce(true);
+    ASSERT_FALSE(e.Enforce({"bob", "data1", "read"}));
+    ASSERT_FALSE(e.Enforce({"bob", "data2", "read"}));
+}
+
 TEST(TestEnforcerCached, TestCacheKeyCollision) {
     casbin::CachedEnforcer e(basic_model_path, basic_policy_path);
     e.AddPolicy({"alice", "data1$$read", "x"});
