@@ -33,6 +33,9 @@ std::vector<std::string> SplitPolicyLine(const std::string& line);
 // LoadPolicyLine loads a text line as a policy rule to model.
 void LoadPolicyLine(const std::string& line, const std::shared_ptr<Model>& model);
 
+// PolicyLineToCsv joins a policy rule into a CSV policy line, quoting fields when needed. Fields with a line break are rejected.
+std::string PolicyLineToCsv(const std::string& p_type, const std::vector<std::string>& rule);
+
 /**
  * Adapter is the interface for Casbin adapters.
  */

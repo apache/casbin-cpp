@@ -63,16 +63,14 @@ void StringAdapter ::SavePolicy(const std::shared_ptr<Model>& model) {
     for (std::unordered_map<std::string, std::shared_ptr<Assertion>>::iterator it = model->m["p"].assertion_map.begin(); it != model->m["p"].assertion_map.end(); it++) {
 
         for (auto& policy_value : it->second->policy) {
-            tmp += it->first + ", ";
-            tmp += ArrayToString(policy_value);
+            tmp += PolicyLineToCsv(it->first, policy_value);
             tmp += "\n";
         }
     }
 
     for (std::unordered_map<std::string, std::shared_ptr<Assertion>>::iterator it = model->m["g"].assertion_map.begin(); it != model->m["g"].assertion_map.end(); it++) {
         for (auto& policy_value : it->second->policy) {
-            tmp += it->first + ", ";
-            tmp += ArrayToString(policy_value);
+            tmp += PolicyLineToCsv(it->first, policy_value);
             tmp += "\n";
         }
     }

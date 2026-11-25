@@ -83,6 +83,40 @@ void LoadPolicyLine(const std::string& line, const std::shared_ptr<Model>& model
     throw CasbinAdapterException("invalid policy rule: unknown policy type " + key);
 }
 
+// PolicyLineToCsv joins a policy rule into a CSV policy line that SplitPolicyLine reads back. A field is quoted when it
+// contains a comma or a double quote, or starts or ends with whitespace. Fields with a line break are rejected, because
+// policy lines are loaded one physical line at a time.
+std::string PolicyLineToCsv(const std::string& p_type, const std::vector<std::string>& rule) {
+    std::vector<std::string> record{p_type};
+    record.insert(record.end(), rule.begin(), rule.end());
+
+    std::string line;
+    for (size_t i = 0; i < record.size(); i++) {
+        const std::string& field = record[i];
+        if (field.find_first_of("\r\n") != std::string::npos)
+            throw CasbinAdapterException("invalid policy field: line breaks are not allowed");
+
+        if (i > 0)
+            line += ", ";
+
+        bool quote = field.find_first_of(",\"") != std::string::npos ||
+                     (!field.empty() && (std::isspace(static_cast<unsigned char>(field.front())) || std::isspace(static_cast<unsigned char>(field.back()))));
+        if (!quote) {
+            line += field;
+            continue;
+        }
+
+        line += '"';
+        for (char c : field) {
+            if (c == '"')
+                line += '"';
+            line += c;
+        }
+        line += '"';
+    }
+    return line;
+}
+
 } // namespace casbin
 
 #endif // ADAPTER_CPP

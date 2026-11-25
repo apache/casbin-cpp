@@ -142,6 +142,25 @@ TEST(TestEnforcer, TestUnknownPolicyType) {
     ASSERT_TRUE(e.Enforce({"bob", "data2", "write"}));
 }
 
+TEST(TestEnforcer, TestSavePolicyQuotesFields) {
+    ASSERT_EQ(casbin::PolicyLineToCsv("p", {"alice", "data1", "read"}), "p, alice, data1, read");
+    ASSERT_EQ(casbin::PolicyLineToCsv("p", {"say \"hi\"", "/a,b", " x "}), "p, \"say \"\"hi\"\"\", \"/a,b\", \" x \"");
+    EXPECT_THROW(casbin::PolicyLineToCsv("p", {"bob", "data2\np, eve, data3", "read"}), casbin::CasbinAdapterException);
+    EXPECT_THROW(casbin::PolicyLineToCsv("p", {"bob", "data2\r", "read"}), casbin::CasbinAdapterException);
+
+    auto adapter = std::make_shared<casbin::StringAdapter>("p, alice, data1, read");
+    casbin::Enforcer e(basic_model_path, adapter);
+    e.AddPolicy({"say \"hi\"", "/a,b", " x "});
+    e.SavePolicy();
+
+    casbin::Enforcer e2(basic_model_path, std::make_shared<casbin::StringAdapter>(adapter->line));
+    ASSERT_TRUE(e2.HasPolicy({"say \"hi\"", "/a,b", " x "}));
+    ASSERT_EQ(e2.GetPolicy().size(), 2u);
+
+    e.AddPolicy({"bob", "data2\np, eve, data3", "read"});
+    EXPECT_THROW(e.SavePolicy(), casbin::CasbinAdapterException);
+}
+
 TEST(TestEnforcer, TestInvalidPatternInMatcher) {
     auto adapter = std::make_shared<casbin::StringAdapter>("p, alice, /data, (read");
     casbin::Enforcer e(keymatch_model_path, adapter);
