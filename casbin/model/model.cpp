@@ -393,8 +393,10 @@ bool Model::RemovePolicies(const std::string& sec, const std::string& p_type, co
 
     for (const std::vector<std::string>& rule : rules) {
         for (auto policy_it = policy.begin(); policy_it != policy.end(); ++policy_it) {
-            if (ArrayEquals(rule, *policy_it))
+            if (ArrayEquals(rule, *policy_it)) {
                 policy.erase(policy_it);
+                break;
+            }
         }
     }
 

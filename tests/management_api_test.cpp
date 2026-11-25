@@ -249,4 +249,22 @@ TEST(TestManagementAPI, TestModifyGroupingPolicyAPI) {
     ASSERT_TRUE(casbin::ArrayEquals({"data4_admin"}, e.GetRolesForUser("admin")));
 }
 
+TEST(TestManagementAPI, TestRemovePoliciesRevokesAccess) {
+    casbin::Enforcer e(rbac_model_path, rbac_policy_path);
+    ASSERT_TRUE(e.Enforce({"alice", "data2", "read"}));
+
+    ASSERT_TRUE(e.RemoveGroupingPolicies(PoliciesValues({{"alice", "data2_admin"}})));
+    ASSERT_FALSE(e.HasGroupingPolicy({"alice", "data2_admin"}));
+    ASSERT_FALSE(e.Enforce({"alice", "data2", "read"}));
+
+    ASSERT_TRUE(e.AddGroupingPolicy({"alice", "data2_admin"}));
+    ASSERT_TRUE(e.RemovePolicies(PoliciesValues({{"data2_admin", "data2", "read"}})));
+    ASSERT_FALSE(e.HasPolicy({"data2_admin", "data2", "read"}));
+    ASSERT_FALSE(e.Enforce({"alice", "data2", "read"}));
+    ASSERT_TRUE(e.Enforce({"alice", "data2", "write"}));
+
+    ASSERT_TRUE(e.removePolicy("g", "g", {"alice", "data2_admin"}));
+    ASSERT_FALSE(e.Enforce({"alice", "data2", "write"}));
+}
+
 } // namespace

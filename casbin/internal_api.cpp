@@ -89,7 +89,7 @@ bool Enforcer::removePolicy(const std::string& sec, const std::string& p_type, c
 
     if (sec == "g") {
         PoliciesValues rules({rule});
-        this->BuildIncrementalRoleLinks(policy_add, p_type, rules);
+        this->BuildIncrementalRoleLinks(policy_remove, p_type, rules);
     }
 
     if (m_adapter && m_auto_save) {
@@ -111,12 +111,12 @@ bool Enforcer::removePolicy(const std::string& sec, const std::string& p_type, c
 
 // removePolicies removes rules from the current policy.
 bool Enforcer::removePolicies(const std::string& sec, const std::string& p_type, const PoliciesValues& rules) {
-    bool rules_removed = m_model->AddPolicies(sec, p_type, rules);
+    bool rules_removed = m_model->RemovePolicies(sec, p_type, rules);
     if (!rules_removed)
         return rules_removed;
 
     if (sec == "g")
-        this->BuildIncrementalRoleLinks(policy_add, p_type, rules);
+        this->BuildIncrementalRoleLinks(policy_remove, p_type, rules);
 
     if (m_adapter && m_auto_save) {
         try {
