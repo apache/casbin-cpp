@@ -31,6 +31,8 @@ class CachedEnforcer : public Enforcer {
 private:
     // cacheVersion is the policy version that the cached decisions were made with.
     uint64_t cacheVersion = 0;
+    // maxCacheEntries is the most decisions the cache holds, 0 means no limit.
+    size_t maxCacheEntries = 100000;
 
     void syncCacheVersion(uint64_t version);
     void setCachedResult(uint64_t version, const std::string& key, bool res);
@@ -45,6 +47,9 @@ public:
     CachedEnforcer(CachedEnforcer&& ce) noexcept;
 
     void EnableCache(const bool& shouldEnableCache);
+    // SetMaxCacheEntries sets the most decisions the cache holds, 0 means no limit. When the cache is full, adding a
+    // new decision empties it first.
+    void SetMaxCacheEntries(size_t max_entries);
     std::pair<bool, bool> getCachedResult(const std::string& key);
     void setCachedResult(const std::string& key, const bool& res);
     void InvalidateCache();

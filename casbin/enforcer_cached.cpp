@@ -153,6 +153,7 @@ CachedEnforcer::CachedEnforcer(const CachedEnforcer& ce)
     this->m = ce.m;
     this->enableCache = ce.enableCache;
     this->cacheVersion = ce.cacheVersion;
+    this->maxCacheEntries = ce.maxCacheEntries;
 }
 
 CachedEnforcer::CachedEnforcer(CachedEnforcer&& ce) noexcept
@@ -160,10 +161,18 @@ CachedEnforcer::CachedEnforcer(CachedEnforcer&& ce) noexcept
     this->m = std::move(ce.m);
     this->enableCache = ce.enableCache;
     this->cacheVersion = ce.cacheVersion;
+    this->maxCacheEntries = ce.maxCacheEntries;
 }
 
 void CachedEnforcer::EnableCache(const bool& shouldEnableCache) {
     this->enableCache = shouldEnableCache;
+}
+
+void CachedEnforcer::SetMaxCacheEntries(size_t max_entries) {
+    std::lock_guard<std::mutex> lock(locker);
+    maxCacheEntries = max_entries;
+    if (maxCacheEntries > 0 && m.size() > maxCacheEntries)
+        m.clear();
 }
 
 std::pair<bool, bool> CachedEnforcer::getCachedResult(const std::string& key) {
@@ -180,9 +189,10 @@ std::pair<bool, bool> CachedEnforcer::getCachedResult(const std::string& key) {
 }
 
 void CachedEnforcer::setCachedResult(const std::string& key, const bool& res) {
-    locker.lock();
+    std::lock_guard<std::mutex> lock(locker);
+    if (maxCacheEntries > 0 && m.size() >= maxCacheEntries && m.find(key) == m.end())
+        m.clear();
     m[key] = res;
-    locker.unlock();
 }
 
 void CachedEnforcer::InvalidateCache() {
@@ -206,6 +216,8 @@ void CachedEnforcer::setCachedResult(uint64_t version, const std::string& key, b
     if (version != cacheVersion)
         return;
 
+    if (maxCacheEntries > 0 && m.size() >= maxCacheEntries && m.find(key) == m.end())
+        m.clear();
     m[key] = res;
 }
 

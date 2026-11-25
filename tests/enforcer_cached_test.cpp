@@ -88,6 +88,17 @@ TEST(TestEnforcerCached, TestCacheWithEnableEnforce) {
     ASSERT_FALSE(e.Enforce({"bob", "data2", "read"}));
 }
 
+TEST(TestEnforcerCached, TestCacheIsBounded) {
+    casbin::CachedEnforcer e(basic_model_path, basic_policy_path);
+    e.SetMaxCacheEntries(10);
+    for (int i = 0; i < 100; i++) {
+        ASSERT_FALSE(e.Enforce({"user" + std::to_string(i), "data1", "read"}));
+        ASSERT_LE(e.m.size(), 10u);
+    }
+    ASSERT_TRUE(e.Enforce({"alice", "data1", "read"}));
+    ASSERT_LE(e.m.size(), 10u);
+}
+
 TEST(TestEnforcerCached, TestCacheKeyCollision) {
     casbin::CachedEnforcer e(basic_model_path, basic_policy_path);
     e.AddPolicy({"alice", "data1$$read", "x"});
