@@ -385,4 +385,19 @@ TEST(TestBuiltInFunctions, TestIPMatch) {
     TestIPMatchFn("11.0.0.123", "10.0.0.0/8", false);
 }
 
+TEST(TestBuiltInFunctions, TestPatternTokensWithOwnGroups) {
+    testKeyGet2Fn("/a/x/42", "/(a|b)/x/:id", "id", "42");
+    testKeyGet2Fn("/42/a", "/:id/(a|b)", "id", "42");
+    testKeyGet2Fn("/b/7/c/9", "/(a|b)/:x/(c|d)/:y", "y", "9");
+
+    testKeyGet3Fn("/a/x/42", "/(a|b)/x/{id}", "id", "42");
+    testKeyGet3Fn("/42/a", "/{id}/(a|b)", "id", "42");
+    testKeyGet3Fn("/b/7/c/9", "/(a|b)/{x}/(c|d)/{y}", "y", "9");
+
+    TestKeyMatch4Fn("/a/123/child/123", "/(a|b)/{id}/child/{id}", true);
+    TestKeyMatch4Fn("/a/123/child/456", "/(a|b)/{id}/child/{id}", false);
+    TestKeyMatch4Fn("/c/123/child/123", "/(a|b)/{id}/child/{id}", false);
+    TestKeyMatch4Fn("/123/x/123", "/{id}/(x|y)/{id}", true);
+}
+
 } // namespace

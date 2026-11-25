@@ -95,6 +95,40 @@ namespace {
 
         return cache.emplace(pattern, std::regex(pattern)).first->second;
     }
+
+    // CountGroups returns the number of capturing groups in the regex s.
+    size_t CountGroups(const std::string& s) {
+        size_t count = 0;
+        bool in_class = false;
+        for (size_t i = 0; i < s.size(); i++) {
+            if (s[i] == '\\')
+                i++;
+            else if (in_class)
+                in_class = s[i] != ']';
+            else if (s[i] == '[')
+                in_class = true;
+            else if (s[i] == '(' && (i + 1 == s.size() || s[i + 1] != '?'))
+                count++;
+        }
+        return count;
+    }
+
+    // ReplaceTokens replaces each match of token_regex in key2 with a capturing group around expr. It also returns the
+    // submatch index of each token's group, which is not always its position because key2 can have capturing groups
+    // of its own, e.g. "/(a|b)/{id}".
+    std::string ReplaceTokens(const std::string& key2, const std::regex& token_regex, const std::string& expr, std::vector<std::string>& tokens, std::vector<size_t>& groups) {
+        std::string res;
+        auto last = key2.cbegin();
+        for (std::sregex_iterator it(key2.begin(), key2.end(), token_regex), end_it; it != end_it; ++it) {
+            res.append(last, (*it)[0].first);
+            tokens.push_back(it->str());
+            groups.push_back(CountGroups(res) + 1);
+            res += "(" + expr + ")";
+            last = (*it)[0].second;
+        }
+        res.append(last, key2.cend());
+        return res;
+    }
 }
 
 // KeyMatch determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.
@@ -148,26 +182,22 @@ bool KeyMatch2(const std::string& key1, const std::string& key2) {
 // For example, "/resource1" matches "/:resource"
 // if the path_var == "resource", then "resource1" will be returned
 std::string KeyGet2(const std::string& key1, const std::string& key2, const std::string& path_var) {
-    static const std::regex colonAnyButSlashPattern(":[^/]+");    
-    std::string k2 = PrepareWildCardMatching(key2);
-
+    static const std::regex colonAnyButSlashPattern(":[^/]+");
     std::vector<std::string> keys;
-    for (std::sregex_iterator it(k2.begin(), k2.end(), colonAnyButSlashPattern), end_it; it != end_it; ++it) {
-        keys.push_back(it->str());
-    }
-
-    k2 = std::regex_replace(k2, capturingColonNonSlashRegex, "$1([^/]+)$2");
+    std::vector<size_t> groups;
+    std::string k2 = ReplaceTokens(PrepareWildCardMatching(key2), colonAnyButSlashPattern, "[^/]+", keys, groups);
     k2 = EscapeCurlyBraces(k2);
     if (!k2.compare("*"))
         k2 = "(.*)";
     k2 = "^" + k2 + "$";
 
     std::smatch values;
-    std::regex_match(key1.begin(), key1.end(), values, GetRegex(k2));
+    if (!std::regex_match(key1, values, GetRegex(k2)))
+        return "";
 
-    for (int i = 0; i < keys.size(); i++)
-        if (!path_var.compare(keys.at(i).substr(1)))
-            return values[i + 1];
+    for (size_t i = 0; i < keys.size(); i++)
+        if (!path_var.compare(keys[i].substr(1)))
+            return values[groups[i]];
 
     return "";
 }
@@ -191,25 +221,21 @@ bool KeyMatch3(const std::string& key1, const std::string& key2) {
 // if the pathVar == "project", then "project1" will be returned
 std::string KeyGet3(const std::string& key1, const std::string& key2, const std::string& path_var) {
     static const std::regex placeHolderPattern("\\{[^/]+?\\}");
-    std::string k2 = PrepareWildCardMatching(key2);
-
     std::vector<std::string> keys;
-    for (std::sregex_iterator it(k2.begin(), k2.end(), placeHolderPattern), end_it; it != end_it; ++it) {
-        keys.push_back(it->str());
-    }
-
-    k2 = std::regex_replace(k2, enclosedPlaceHolderRegex, "$1([^/]+?)$2");
+    std::vector<size_t> groups;
+    std::string k2 = ReplaceTokens(PrepareWildCardMatching(key2), placeHolderPattern, "[^/]+?", keys, groups);
     k2 = EscapeCurlyBraces(k2);
     if (!k2.compare("*"))
         k2 = "(.*)";
     k2 = "^" + k2 + "$";
 
     std::smatch values;
-    std::regex_match(key1.begin(), key1.end(), values, GetRegex(k2));
+    if (!std::regex_match(key1, values, GetRegex(k2)))
+        return "";
 
-    for (int i = 0; i < keys.size(); i++)
-        if (!path_var.compare(keys.at(i).substr(1, keys.at(i).length() - 2)))
-            return values[i + 1];
+    for (size_t i = 0; i < keys.size(); i++)
+        if (!path_var.compare(keys[i].substr(1, keys[i].length() - 2)))
+            return values[groups[i]];
 
     return "";
 }
@@ -224,32 +250,24 @@ bool KeyMatch4(const std::string& key1, const std::string& key2) {
     if (MatchWithoutRegex(key1, key2, regexSpecialChars, res))
         return res;
 
-    std::string k2 = PrepareWildCardMatching(key2);
-
+    static const std::regex tokens_regex("\\{[^/]+\\}");
     std::vector<std::string> tokens;
-    static std::regex tokens_regex("\\{([^/]+)\\}");
-    for (std::sregex_iterator it(k2.begin(), k2.end(), tokens_regex), end_it; it != end_it; ++it)
-        tokens.push_back(it->str());
+    std::vector<size_t> groups;
+    std::string k2 = ReplaceTokens(PrepareWildCardMatching(key2), tokens_regex, "[^/]+", tokens, groups);
+    k2 = "^" + EscapeCurlyBraces(k2) + "$";
 
-    k2 = std::regex_replace(k2, enclosedPlaceHolderRegex, "$1([^/]+)$2");
-    k2 = EscapeCurlyBraces(k2);
-    k2 = "^" + k2 + "$";
     std::smatch matches;
-    std::regex_match(key1.begin(), key1.end(), matches, GetRegex(k2));
-    if (matches.empty())
+    if (!std::regex_match(key1, matches, GetRegex(k2)))
         return false;
-    if (tokens.size() != matches.size() - 1)
-        throw "KeyMatch4: number of tokens is not equal to number of values";
 
     std::map<std::string, std::string> tokens_matches;
-
-    for (int i = 0; i < tokens.size(); i++) {
-        if (tokens_matches.find(tokens[i]) == tokens_matches.end()) {
-            tokens_matches.insert(std::pair<std::string, std::string>(tokens[i], matches[i + 1]));
-            continue;
-        } else if (tokens_matches.at(tokens[i]).compare(matches[i + 1])) {
+    for (size_t i = 0; i < tokens.size(); i++) {
+        std::string match = matches[groups[i]];
+        auto it = tokens_matches.find(tokens[i]);
+        if (it == tokens_matches.end())
+            tokens_matches.emplace(tokens[i], match);
+        else if (it->second != match)
             return false;
-        }
     }
     return true;
 }

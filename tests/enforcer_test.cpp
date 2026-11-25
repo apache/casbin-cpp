@@ -129,6 +129,13 @@ TEST(TestEnforcer, TestQuotedPolicy) {
     ASSERT_EQ(e.Enforce({"\"admin\"", "/", "POST"}), false);
 }
 
+TEST(TestEnforcer, TestInvalidPatternInMatcher) {
+    auto adapter = std::make_shared<casbin::StringAdapter>("p, alice, /data, (read");
+    casbin::Enforcer e(keymatch_model_path, adapter);
+    EXPECT_THROW(e.Enforce({"alice", "/data", "read"}), std::exception);
+    EXPECT_THROW(e.Enforce({"alice", "/data", "read"}), std::exception);
+}
+
 TEST(TestEnforcer, TestVectorParams) {
     casbin::Enforcer e(basic_model_without_spaces_path, basic_policy_path);
 
