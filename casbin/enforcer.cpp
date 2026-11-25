@@ -424,6 +424,8 @@ void Enforcer::SetEffector(std::shared_ptr<Effector> eft) {
 // ClearPolicy clears all policy.
 void Enforcer::ClearPolicy() {
     m_model->ClearPolicy();
+    if (m_auto_build_role_links && this->rm)
+        this->rm->Clear();
 }
 
 // LoadPolicy reloads the policy from file/database.

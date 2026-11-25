@@ -267,4 +267,15 @@ TEST(TestManagementAPI, TestRemovePoliciesRevokesAccess) {
     ASSERT_FALSE(e.Enforce({"alice", "data2", "write"}));
 }
 
+TEST(TestManagementAPI, TestClearPolicyRemovesRoleLinks) {
+    casbin::Enforcer e(rbac_model_path, rbac_policy_path);
+    ASSERT_TRUE(e.Enforce({"alice", "data2", "read"}));
+
+    e.ClearPolicy();
+    ASSERT_TRUE(e.GetRolesForUser("alice").empty());
+
+    e.AddPolicy({"data2_admin", "data2", "read"});
+    ASSERT_FALSE(e.Enforce({"alice", "data2", "read"}));
+}
+
 } // namespace
