@@ -87,6 +87,10 @@ PoliciesValues::iterator  PoliciesValues::iterator::operator++() {
      return *this;
 }
 
+bool PoliciesValues::iterator::operator==(const PoliciesValues::iterator& other) const {
+     return !(*this != other);
+}
+
 bool PoliciesValues::iterator::operator!=(const PoliciesValues::iterator& other) const {
      return opt_vector_iterator != other.opt_vector_iterator || opt_hashset_iterator != other.opt_hashset_iterator;
 }
@@ -144,6 +148,10 @@ PoliciesValues::const_iterator PoliciesValues::const_iterator::operator++() {
      else
          opt_hashset_iterator++;
      return *this;
+}
+
+bool PoliciesValues::const_iterator::operator==(const const_iterator& other) const {
+     return !(*this != other);
 }
 
 bool PoliciesValues::const_iterator::operator!=(const const_iterator& other) const {

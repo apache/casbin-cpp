@@ -35,6 +35,18 @@ TEST(TestManagementAPI, TestGetList) {
     ASSERT_TRUE(casbin::ArrayEquals({"data2_admin"}, e.GetAllRoles()));
 }
 
+TEST(TestManagementAPI, TestPolicyIteratorEquality) {
+    const PolicyValues policy = {"alice", "data1", "read"};
+    for (auto policies : {PoliciesValues::createWithVector({policy}), PoliciesValues::createWithHashset({policy})}) {
+        const auto& const_policies = policies;
+
+        ASSERT_NE(policies.begin(), policies.end());
+        ASSERT_EQ(++policies.begin(), policies.end());
+        ASSERT_NE(const_policies.begin(), const_policies.end());
+        ASSERT_EQ(++const_policies.begin(), const_policies.end());
+    }
+}
+
 void TestGetPolicy(casbin::Enforcer& e, const PoliciesValues& res) {
     PoliciesValues my_res;
     my_res = e.GetPolicy();
