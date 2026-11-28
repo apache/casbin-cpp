@@ -73,6 +73,7 @@ public:
             using reference = value_type&;
             PolicyValues& operator*() const;
             iterator operator++();
+            bool operator==(const iterator& other) const;
             bool operator!=(const iterator& other) const;
     };
 
@@ -95,6 +96,7 @@ public:
             using reference = value_type&;
             const PolicyValues& operator*() const;
             const_iterator operator++();
+            bool operator==(const const_iterator& other) const;
             bool operator!=(const const_iterator& other) const;
     };
 
